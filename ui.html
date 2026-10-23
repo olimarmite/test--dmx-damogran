@@ -3,290 +3,418 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
 <title>Damogran</title>
 <style>
+  /* Regie dans le noir : interface monochrome chaude pour que seules les couleurs des projecteurs
+     soient en couleur. Un accent ambre (la servante du theatre) pour la selection, le rouge reserve au blackout.
+     Sombre volontairement et uniquement : un ecran clair en regie se voit depuis la salle. */
   :root {
-    --bg: #0d0e10; --panel: #16181c; --panel-2: #1e2126; --line: #2a2e35;
-    --text: #e8e6e1; --muted: #8b8f97; --accent: #ffb547; --danger: #ff4d4d;
-    --radius: 10px;
+    --ground: #0f0e0c;
+    --floor: #141310;
+    --surface: #1a1815;
+    --surface-2: #24211c;
+    --line: #322d26;
+    --ink: #ede7dc;
+    --ink-2: #b0a696;
+    --ink-3: #8f8577;
+    --amber: #f2b33d;
+    --amber-ink: #1d1404;
+    --red: #e4483b;
+    --ok: #74c48f;
+
+    --legend: "Bahnschrift", "DIN Alternate", "DIN Condensed", "Barlow", "Arial Narrow", sans-serif;
+    --text: system-ui, "Segoe UI", -apple-system, "Helvetica Neue", sans-serif;
+
+    --r-ctl: 4px;      /* boutons et champs : touches de console */
+    --r-panel: 10px;   /* panneaux */
+    --ease: cubic-bezier(.2, .7, .2, 1);
+    --fast: 120ms;
+    color-scheme: dark;
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; background: var(--bg); color: var(--text);
-    font: 15px/1.35 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  html, body { margin: 0; background: var(--ground); color: var(--ink); font: 15px/1.4 var(--text); }
+  body { min-height: 100vh; }
   button, input, select { font: inherit; color: inherit; }
-  button { background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px;
-    padding: 8px 12px; cursor: pointer; }
-  button:hover { border-color: #444a53; }
-  button.on { background: var(--accent); color: #111; border-color: var(--accent); }
-  button.danger.on { background: var(--danger); border-color: var(--danger); color: #fff; }
+  :focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+  .skip { position: absolute; left: 8px; top: -40px; background: var(--amber); color: var(--amber-ink); padding: 6px 10px; border-radius: var(--r-ctl); z-index: 20; }
+  .skip:focus { top: 8px; }
+  .legend { font-family: var(--legend); letter-spacing: .06em; text-transform: uppercase; font-size: 12px; color: var(--ink-2); }
+  .num { font-family: var(--legend); font-variant-numeric: tabular-nums; }
+  .muted { color: var(--ink-2); }
+  [hidden] { display: none !important; }
 
-  header { position: sticky; top: 0; z-index: 5; background: rgba(13,14,16,.94);
-    backdrop-filter: blur(6px); border-bottom: 1px solid var(--line);
-    display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; padding: 10px 16px; }
-  header h1 { font-size: 16px; letter-spacing: .08em; text-transform: uppercase; margin: 0; }
-  .status { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
-  .dot { width: 8px; height: 8px; border-radius: 50%; background: #555; }
-  .dot.ok { background: #3ddc84; box-shadow: 0 0 6px #3ddc84; }
-  .dot.err { background: var(--danger); }
-  .master { display: flex; align-items: center; gap: 8px; flex: 1 1 220px; min-width: 200px; }
-  .master label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  /* ---- boutons : touches de console ---- */
+  .btn { background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 8px 12px; cursor: pointer;
+    font-family: var(--legend); letter-spacing: .03em; transition: border-color var(--fast) var(--ease), background var(--fast) var(--ease); }
+  .btn:hover { border-color: #4a4338; }
+  .btn:active { background: #2d2923; }
+  .btn.primary { background: var(--amber); color: var(--amber-ink); border-color: var(--amber); }
+  .btn.quiet { background: transparent; }
+  .btn.small { padding: 4px 9px; font-size: 13px; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+  /* ---- en-tete ---- */
+  header { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10; background: var(--ground); border-bottom: 1px solid var(--line);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px;
+    padding: 10px max(16px, env(safe-area-inset-right, 0px)) 10px max(16px, env(safe-area-inset-left, 0px)); }
+  h1 { margin: 0; font: 600 17px/1 var(--legend); letter-spacing: .18em; text-transform: uppercase; }
+  .status { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--ink-2); }
+  .chip { display: inline-flex; align-items: center; gap: 6px; background: none; border: 0; padding: 0; cursor: pointer; color: inherit; font-size: 13px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #5a5248; flex: none; }
+  .dot.ok { background: var(--ok); }
+  .dot.err { background: var(--red); }
+  .dot.warn { background: var(--amber); }
   .spacer { flex: 1; }
+  #blackout { font: 600 14px/1 var(--legend); letter-spacing: .1em; text-transform: uppercase; padding: 10px 16px;
+    background: transparent; border: 1px solid var(--red); color: #ff8a7f; border-radius: var(--r-ctl); cursor: pointer; }
+  #blackout[aria-pressed="true"] { background: var(--red); color: #fff; }
 
-  main { padding: 12px 16px 40px; max-width: 1400px; margin: 0 auto; }
+  /* ---- mise en page ---- */
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 16px; align-items: start;
+    padding: 16px max(16px, env(safe-area-inset-right, 0px)) 32px max(16px, env(safe-area-inset-left, 0px)); max-width: 1440px; margin: 0 auto; }
+  .stack { display: grid; gap: 16px; min-width: 0; }
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-panel); padding: 14px 16px 16px; min-width: 0; }
+  .panel-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; margin-bottom: 12px; }
+  .panel-head h2 { margin: 0; font: 600 13px/1.2 var(--legend); letter-spacing: .08em; text-transform: uppercase; }
+  .panel-head .hint { font-size: 13px; color: var(--ink-2); }
 
-  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
-  .toolbar .hint { font-size: 12px; color: var(--muted); }
-  .swatches { display: flex; flex-wrap: wrap; gap: 6px; }
-  .sw { width: 38px; height: 38px; border-radius: 8px; border: 2px solid transparent; padding: 0; }
-  .sw:hover { border-color: #fff8; }
+  /* ---- plateau : les spots vus du dessus ---- */
+  .stage { background: var(--floor); border-radius: 6px; padding: 18px 12px 12px; position: relative;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 10px 6px; }
+  .stage::after { content: "avant-scène"; position: absolute; left: 0; right: 0; bottom: -18px; text-align: center;
+    font: 11px/1 var(--legend); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); }
+  .stage-wrap { padding-bottom: 20px; }
+  .stage-wrap .apron { height: 2px; background: var(--line); margin-top: 0; border-radius: 1px; }
+  .spot { background: none; border: 0; padding: 4px 2px 6px; cursor: pointer; color: inherit; display: grid; justify-items: center; gap: 4px; border-radius: 8px; }
+  .pool { width: 76px; height: 76px; border-radius: 50%; position: relative; display: grid; place-items: center;
+    border: 1px solid var(--line); transition: box-shadow var(--fast) var(--ease); }
+  .pool .n { font: 600 15px/1 var(--legend); color: var(--ink); text-shadow: 0 0 3px #000, 0 0 6px #000; }
+  .spot[aria-pressed="true"] .pool { box-shadow: 0 0 0 2px var(--floor), 0 0 0 4px var(--amber); }
+  .spot .name { font-size: 13px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .spot[aria-pressed="true"] .name { color: var(--amber); }
+  .spot .lvl { font-size: 12px; color: var(--ink-2); }
 
-  .scenes { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; margin-bottom: 12px; }
-  .scenes-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 8px; }
-  .scenes-head .label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
-  .scenes-head label { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
-  .scenes-head select { width: auto; }
-  .scene-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
-  .scene { display: flex; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2); overflow: hidden; }
-  .scene.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
-  .scene .go { flex: 1; border: 0; border-radius: 0; background: transparent; text-align: left; padding: 10px 12px; min-height: 52px; }
-  .scene .go small { display: block; color: var(--muted); font-size: 11px; }
-  .scene .edit { border: 0; border-left: 1px solid var(--line); border-radius: 0; background: transparent; padding: 0 10px; color: var(--muted); }
-  .scene .dots { display: flex; gap: 3px; margin-top: 4px; }
-  .scene .dots i { width: 10px; height: 10px; border-radius: 50%; border: 1px solid #0008; }
-  .empty { font-size: 13px; color: var(--muted); grid-column: 1 / -1; }
-  #sceneDlg { width: min(420px, calc(100vw - 32px)); }
-  .whites { display: flex; flex-wrap: wrap; gap: 6px; }
-  .whites button { color: #1a1408; font-size: 13px; font-weight: 600; border-color: transparent; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
-  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
-    padding: 12px; display: flex; flex-direction: column; gap: 10px; }
-  body.rawmode .row.hs, body:not(.rawmode) .row.raw { display: none; }
-  .card.group { background: var(--panel-2); border-style: dashed; }
-  .card.sel { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
-  .card-head { display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; }
-  .lamp { width: 44px; height: 44px; border-radius: 50%; flex: none; border: 1px solid #0008; }
-  .card-head .name { font-weight: 600; }
-  .card-head .addr { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
-  .card-head .chk { margin-left: auto; width: 22px; height: 22px; border-radius: 6px;
-    border: 1px solid var(--line); display: grid; place-items: center; font-size: 14px; }
-  .card.sel .chk { background: var(--accent); color: #111; border-color: var(--accent); }
+  /* ---- memoires ---- */
+  .scenes { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; }
+  .scene { display: flex; background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; min-width: 0; }
+  .scene.active { border-color: var(--amber); }
+  .scene .go { flex: 1; min-width: 0; background: none; border: 0; padding: 10px 12px; text-align: left; cursor: pointer; display: grid; gap: 6px; }
+  .scene .title { display: flex; gap: 8px; align-items: baseline; min-width: 0; }
+  .scene .key { font: 12px/1 var(--legend); color: var(--ink-3); }
+  .scene.active .key { color: var(--amber); }
+  .scene .label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .scene .mini { display: flex; gap: 3px; }
+  .scene .mini i { width: 12px; height: 12px; border-radius: 50%; border: 1px solid #0008; }
+  .scene .edit { background: none; border: 0; border-left: 1px solid var(--line); padding: 0 12px; color: var(--ink-2); cursor: pointer; font-size: 18px; }
+  .empty { color: var(--ink-2); font-size: 14px; margin: 0; max-width: 60ch; }
+  .row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+  select, input[type=text], input[type=number] { background: var(--ground); border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 7px 8px; min-width: 0; }
 
-  .row { display: grid; grid-template-columns: 34px 1fr 40px; align-items: center; gap: 8px; }
-  .row span { font-size: 12px; color: var(--muted); text-transform: uppercase; }
-  .row output { font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+  /* ---- reglage : faders, champ de couleur, temperature ---- */
+  aside .panel { position: sticky; top: 72px; }
+  .target-name { font-size: 15px; color: var(--ink); }
+  .faders { display: flex; gap: 14px; align-items: stretch; }
+  .fader { display: grid; justify-items: center; gap: 6px; flex: none; width: 54px; outline: none; }
+  .fader .track { position: relative; width: 36px; height: 190px; border-radius: 4px; background: var(--ground); border: 1px solid var(--line); cursor: ns-resize; touch-action: none; }
+  .fader .fill { position: absolute; left: 3px; right: 3px; bottom: 3px; border-radius: 2px; background: var(--fill, #6d655a); opacity: .55; }
+  .fader .cap { position: absolute; left: -5px; right: -5px; height: 16px; margin-bottom: -8px; border-radius: 3px; background: #d9d2c5;
+    border: 1px solid #000; box-shadow: inset 0 -2px 0 #9e968a; }
+  .fader .cap::after { content: ""; position: absolute; left: 4px; right: 4px; top: 7px; height: 1px; background: #4a453e; }
+  .fader:focus-visible .track { outline: 2px solid var(--amber); outline-offset: 3px; }
+  .fader .val { font: 15px/1 var(--legend); font-variant-numeric: tabular-nums; }
+  .fader .lab { font: 11px/1.2 var(--legend); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); text-align: center; }
+  .fader.big { width: 72px; }
+  .fader.big .track { width: 52px; height: 220px; }
+  .fader.slim { width: 40px; }
+  .fader.slim .track { width: 26px; height: 150px; }
+  .colorcol { display: grid; gap: 12px; flex: 1; min-width: 0; align-content: start; }
+  .field { position: relative; height: 150px; border-radius: 6px; cursor: crosshair; touch-action: none; border: 1px solid var(--line);
+    background: linear-gradient(to top, #fff, rgba(255,255,255,0)), linear-gradient(to right, #f00, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00); }
+  .field .mark { position: absolute; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px #000; pointer-events: none; }
+  .swatches { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; }
+  .sw { aspect-ratio: 1; border: 1px solid #0006; border-radius: 3px; padding: 0; cursor: pointer; min-width: 0; }
+  .sw:hover { outline: 1px solid var(--ink-2); }
+  .temp { position: relative; height: 34px; border-radius: 6px; cursor: ew-resize; touch-action: none; border: 1px solid var(--line); }
+  .temp .mark { position: absolute; top: -4px; bottom: -4px; width: 4px; margin-left: -2px; background: var(--ink); border: 1px solid #000; border-radius: 2px; pointer-events: none; }
+  .temp-ticks { display: flex; justify-content: space-between; margin-top: 4px; }
+  .temp-ticks button { background: none; border: 0; padding: 4px 2px; cursor: pointer; color: var(--ink-2); font: 12px/1 var(--legend); font-variant-numeric: tabular-nums; }
+  .temp-ticks button:hover { color: var(--ink); }
+  .sub { margin-top: 16px; }
+  .sub > .legend { display: block; margin-bottom: 8px; }
+  details.fine { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; }
+  details.fine summary { cursor: pointer; font: 12px/1 var(--legend); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); }
+  details.fine .faders { margin-top: 12px; flex-wrap: wrap; }
+  .master { display: grid; grid-template-columns: auto 1fr 36px; align-items: center; gap: 12px; }
+  .master .num { text-align: right; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
 
-  input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 26px;
-    background: transparent; margin: 0; }
-  input[type=range]::-webkit-slider-runnable-track { height: 10px; border-radius: 5px; background: var(--track, #333); }
-  input[type=range]::-moz-range-track { height: 10px; border-radius: 5px; background: var(--track, #333); }
-  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; margin-top: -6px;
-    border-radius: 50%; background: #f4f2ee; border: 2px solid #0009; }
-  input[type=range]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: #f4f2ee; border: 2px solid #0009; }
-  .hue { --track: linear-gradient(90deg,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00); }
-  .card-actions { display: flex; gap: 6px; }
-  .card-actions button { flex: 1; padding: 6px; font-size: 13px; }
-
-  /* Reglages */
-  dialog { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 12px;
-    width: min(900px, calc(100vw - 32px)); max-height: calc(100vh - 32px); padding: 0; }
-  dialog::backdrop { background: #000a; }
-  .dlg-head { display: flex; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--line);
-    position: sticky; top: 0; background: var(--panel); z-index: 1; }
-  .dlg-head h2 { margin: 0; font-size: 16px; }
+  /* ---- reglages (plein ecran) ---- */
+  dialog { background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: var(--r-panel); padding: 0;
+    width: min(980px, calc(100vw - 24px)); max-height: calc(100vh - 24px); }
+  dialog::backdrop { background: #000c; }
+  .dlg-head { position: sticky; top: 0; z-index: 2; background: var(--surface); border-bottom: 1px solid var(--line);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 12px 16px; }
+  .dlg-head h2 { margin: 0; font: 600 15px/1 var(--legend); letter-spacing: .1em; text-transform: uppercase; }
+  .tabs { display: flex; gap: 2px; background: var(--ground); border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 2px; }
+  .tabs button { background: none; border: 0; padding: 6px 12px; border-radius: 3px; cursor: pointer; font-family: var(--legend); letter-spacing: .04em; color: var(--ink-2); }
+  .tabs button[aria-selected="true"] { background: var(--surface-2); color: var(--ink); }
   .dlg-body { padding: 16px; display: grid; gap: 20px; }
-  fieldset { border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; margin: 0; }
-  legend { color: var(--accent); font-size: 13px; text-transform: uppercase; letter-spacing: .06em; padding: 0 6px; }
-  .form { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
-  .form label { display: grid; gap: 4px; font-size: 12px; color: var(--muted); }
-  input[type=text], input[type=number], select { background: var(--bg); border: 1px solid var(--line);
-    border-radius: 6px; padding: 7px 8px; width: 100%; min-width: 0; }
-  .help { font-size: 12px; color: var(--muted); margin: 8px 0 0; }
-  .help code { color: var(--text); }
+  .block h3 { margin: 0 0 10px; font: 600 13px/1.2 var(--legend); letter-spacing: .08em; text-transform: uppercase; }
+  .help { font-size: 13px; color: var(--ink-2); margin: 8px 0 0; max-width: 75ch; }
+  .help code, .steps code { color: var(--ink); font-size: 12.5px; }
   .tablewrap { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; min-width: 560px; }
-  th { text-align: left; font-size: 12px; color: var(--muted); font-weight: 500; padding: 4px; }
-  td { padding: 3px 4px; }
-  td.n { width: 90px; }
-  .disc { margin-top: 12px; }
-  .disc h3 { font-size: 13px; margin: 0 0 6px; color: var(--muted); font-weight: 500; }
-  .disc td { font-size: 13px; padding: 5px 6px; border-top: 1px solid var(--line); vertical-align: middle; }
-  .disc td.muted, .disc .muted { color: var(--muted); }
-  .disc button { padding: 4px 10px; font-size: 13px; white-space: nowrap; }
-  .tag { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 4px; background: var(--panel-2); color: var(--muted); margin-left: 4px; }
-  .tag.warn-tag { color: var(--accent); }
-  .warn { color: var(--accent); font-size: 13px; margin-top: 8px; white-space: pre-line; }
-  .err { color: var(--danger); }
-  .lbl { display: grid; gap: 4px; font-size: 12px; color: var(--muted); }
-  .tester { display: grid; grid-template-columns: 110px 110px 1fr 50px auto; gap: 10px; align-items: end; }
-  @media (max-width: 600px) {
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font: 500 12px/1.2 var(--legend); letter-spacing: .04em; color: var(--ink-2); padding: 4px 6px; }
+  td { padding: 4px 6px; border-top: 1px solid var(--line); vertical-align: middle; font-size: 14px; }
+  td input { width: 100%; }
+  td.n { width: 96px; }
+  .warn { color: var(--amber); font-size: 13px; white-space: pre-line; margin-top: 8px; }
+  .err { color: #ff8a7f; font-size: 13px; }
+  .form { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+  .form label, .lbl { display: grid; gap: 4px; font-size: 13px; color: var(--ink-2); }
+  .tag { display: inline-block; font: 11px/1.4 var(--legend); padding: 0 6px; border-radius: 3px; background: var(--surface-2); color: var(--ink-2); margin-left: 6px; }
+  .tag.attn { color: var(--amber); }
+  .tester { display: grid; grid-template-columns: 110px 110px 1fr auto; gap: 12px; align-items: end; }
+  input[type=range] { width: 100%; accent-color: var(--amber); }
+
+  /* console : un tranche par canal, comme la Mini Connect */
+  .desk { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  .ch { background: var(--ground); border: 1px solid var(--line); border-radius: 6px; padding: 8px; display: grid; gap: 6px; }
+  .ch.live { border-color: var(--amber); }
+  .ch .top { display: flex; justify-content: space-between; align-items: baseline; }
+  .ch .meter { height: 70px; background: var(--surface); border-radius: 3px; position: relative; overflow: hidden; }
+  .ch .meter i { position: absolute; left: 0; right: 0; bottom: 0; background: #6d655a; }
+  .ch.live .meter i { background: var(--amber); }
+  .ch select { width: 100%; font-size: 13px; padding: 5px 4px; }
+  .steps { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: 14px; max-width: 80ch; }
+  .switch { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; }
+
+  @media (max-width: 1000px) {
+    .layout { grid-template-columns: 1fr; }
+    main.stack { display: contents; }
+    aside .panel { position: static; }
+    .stage-sec { order: 1; } aside { order: 2; } .scenes-sec { order: 3; }
+  }
+  @media (max-width: 560px) {
+    .pool { width: 60px; height: 60px; }
+    .stage { grid-template-columns: repeat(4, 1fr); }
+    .swatches { grid-template-columns: repeat(5, 1fr); }
+    .sw { aspect-ratio: auto; height: 36px; }
     .tester { grid-template-columns: 1fr 1fr; }
     .tester .wide { grid-column: 1 / -1; }
+    .status .net { display: none; }
   }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
 <body>
+<a class="skip" href="#control">Aller au réglage</a>
 <header>
   <h1>Damogran</h1>
-  <div class="status"><span class="dot" id="dot"></span><span id="statusText">connexion…</span></div>
-  <div class="master">
-    <label for="master">Master</label>
-    <input type="range" id="master" min="0" max="255" value="255" style="--track:linear-gradient(90deg,#222,#fff)">
-    <output id="masterOut" style="font-size:12px;width:38px;text-align:right">100%</output>
+  <div class="status">
+    <span class="chip net" role="status"><span class="dot" id="dot"></span><span id="statusText">connexion…</span></span>
+    <button class="chip" id="consoleChip" type="button" title="Réglages de la console"><span class="dot" id="consoleDot"></span><span id="consoleText">Console</span></button>
   </div>
-  <button class="danger" id="blackout" title="Raccourci : B">Blackout</button>
-  <button id="openSetup">Réglages</button>
+  <span class="spacer"></span>
+  <button id="blackout" type="button" aria-pressed="false" title="Touche B">Blackout</button>
+  <button class="btn" id="openSetup" type="button">Réglages</button>
 </header>
 
-<main>
-  <section class="scenes">
-    <div class="scenes-head">
-      <span class="label">Mémoires</span>
-      <label>Fondu
-        <select id="fadeSel">
-          <option value="0">0 s (cut)</option><option value="1">1 s</option><option value="2">2 s</option>
-          <option value="3">3 s</option><option value="5">5 s</option><option value="10">10 s</option>
-        </select>
-      </label>
-      <span class="spacer"></span>
-      <button class="on" id="sceneNew">+ Mémoriser l'état actuel</button>
-    </div>
-    <div class="scene-list" id="sceneList"></div>
-  </section>
+<div class="layout">
+  <main class="stack">
+    <section class="panel stage-sec" aria-labelledby="stageTitle">
+      <div class="panel-head">
+        <h2 id="stageTitle">Plateau</h2>
+        <span class="hint" id="selHint"></span>
+        <span class="spacer"></span>
+        <button class="btn small quiet" id="selAll" type="button">Tous</button>
+        <button class="btn small quiet" id="selNone" type="button">Aucun</button>
+      </div>
+      <div class="stage-wrap">
+        <div class="stage" id="stage"></div>
+      </div>
+    </section>
 
-  <div class="toolbar">
-    <button id="selAll">Tout sélectionner</button>
-    <button id="selNone">Aucun</button>
-    <button id="rawMode" title="Afficher les faders Rouge / Vert / Bleu directs au lieu de Teinte / Saturation">Faders RGB bruts</button>
-    <span class="hint" id="selHint"></span>
-  </div>
-  <div class="toolbar">
-    <div class="swatches" id="swatches"></div>
-    <button id="allFull">Dim 100%</button>
-    <button id="allHalf">Dim 50%</button>
-    <button id="allOff">Dim 0</button>
-  </div>
-  <div class="toolbar">
-    <span class="hint">Blancs</span>
-    <div class="whites" id="whites"></div>
-  </div>
-  <div class="grid" id="grid"></div>
-</main>
+    <section class="panel scenes-sec" aria-labelledby="scenesTitle">
+      <div class="panel-head">
+        <h2 id="scenesTitle">Mémoires</h2>
+        <span class="hint">touches 1 à 9</span>
+        <span class="spacer"></span>
+        <label class="row" style="gap:6px"><span class="legend">Fondu</span>
+          <select id="fadeSel">
+            <option value="0">cut</option><option value="1">1 s</option><option value="2">2 s</option>
+            <option value="3">3 s</option><option value="5">5 s</option><option value="10">10 s</option>
+          </select>
+        </label>
+        <button class="btn primary small" id="sceneNew" type="button">Mémoriser l'état actuel</button>
+      </div>
+      <div class="scenes" id="sceneList"></div>
+    </section>
+  </main>
+
+  <aside>
+    <section class="panel" id="control" aria-labelledby="ctlTitle" tabindex="-1">
+      <div class="panel-head">
+        <h2 id="ctlTitle">Réglage</h2>
+        <span class="target-name" id="targetName"></span>
+      </div>
+      <div class="faders">
+        <div id="dimFader"></div>
+        <div class="colorcol">
+          <div>
+            <span class="legend" id="fieldLabel">Couleur</span>
+            <div class="field" id="field" role="slider" tabindex="0" aria-labelledby="fieldLabel" aria-valuetext=""><div class="mark" id="fieldMark"></div></div>
+          </div>
+          <div class="swatches" id="swatches"></div>
+        </div>
+      </div>
+      <div class="sub">
+        <span class="legend" id="tempLabel">Blanc · chaud à froid</span>
+        <div class="temp" id="temp" role="slider" tabindex="0" aria-labelledby="tempLabel" aria-valuemin="2700" aria-valuemax="6500"><div class="mark" id="tempMark" hidden></div></div>
+        <div class="temp-ticks" id="tempTicks"></div>
+      </div>
+      <details class="fine" id="fine">
+        <summary>Réglage fin des canaux</summary>
+        <div class="faders" id="fineFaders"></div>
+      </details>
+      <div class="actions">
+        <button class="btn small" id="identify" type="button">Faire clignoter</button>
+        <button class="btn small" id="full" type="button">Plein feu</button>
+        <button class="btn small" id="off" type="button">Éteindre</button>
+      </div>
+      <div class="sub">
+        <div class="master"><span class="legend">Master</span>
+          <input type="range" id="master" min="0" max="255" aria-label="Master">
+          <span class="num" id="masterOut">100</span></div>
+      </div>
+    </section>
+  </aside>
+</div>
 
 <dialog id="sceneDlg">
   <div class="dlg-head"><h2 id="sceneDlgTitle">Mémoire</h2></div>
   <div class="dlg-body">
     <label class="lbl">Nom <input type="text" id="sceneName" maxlength="30"></label>
-    <div class="toolbar" id="sceneDlgBtns" style="margin:0"></div>
+    <div class="row" id="sceneDlgBtns"></div>
   </div>
 </dialog>
 
-<dialog id="setup">
+<dialog id="setup" aria-labelledby="setupTitle">
   <div class="dlg-head">
-    <h2>Réglages</h2>
+    <h2 id="setupTitle">Réglages</h2>
+    <div class="tabs" role="tablist">
+      <button role="tab" type="button" data-tab="fx" aria-selected="true">Projecteurs</button>
+      <button role="tab" type="button" data-tab="console" aria-selected="false">Console</button>
+      <button role="tab" type="button" data-tab="net" aria-selected="false">Réseau</button>
+    </div>
     <span class="spacer"></span>
-    <button id="cancelSetup">Fermer</button>&nbsp;
-    <button class="on" id="saveSetup">Enregistrer</button>
+    <button class="btn" id="cancelSetup" type="button">Fermer</button>
+    <button class="btn primary" id="saveSetup" type="button">Enregistrer</button>
   </div>
-  <div class="dlg-body">
-    <fieldset>
-      <legend>Découverte automatique</legend>
-      <div class="toolbar" style="margin:0">
-        <button class="on" id="discover">Lancer la découverte</button>
-        <span class="hint" id="discPhase"></span>
-      </div>
-      <div class="err" id="discError" style="font-size:13px;margin-top:8px"></div>
-      <div id="discNodes"></div>
-      <div id="discDevices"></div>
-      <p class="help"><b>MagicQ doit être fermé</b> (il occupe le port Art-Net). Les nodes répondent toujours (ArtPoll).
-        Les projecteurs ne sont trouvés que s'ils gèrent le RDM, comme le node : sinon, saisie manuelle ci-dessous.
-        Ajouter un projecteur le met dans la liste plus bas : vérifie, puis <b>Enregistrer</b>.</p>
-    </fieldset>
 
-    <fieldset>
-      <legend>Réseau Art-Net</legend>
-      <div class="form">
-        <label>IP de destination
-          <input type="text" id="cfgTarget" placeholder="2.255.255.255">
-        </label>
-        <label>Carte réseau à utiliser (IP de ce PC)
-          <select id="cfgBind"></select>
-        </label>
-        <label>Port <input type="number" id="cfgPort" min="1" max="65535"></label>
-        <label>Rafraîchissement (img/s) <input type="number" id="cfgFps" min="1" max="44"></label>
-      </div>
-      <p class="help">Destination : l'IP du node Art-Net, ou le broadcast du réseau (ex. <code>2.255.255.255</code> si les IP sont en 2.x.x.x,
-        <code>192.168.1.255</code> si en 192.168.1.x). Regarde dans MagicQ <code>Setup &gt; DMX I/O</code> quelle IP/broadcast il utilise et reprends la même.</p>
-    </fieldset>
-
-    <fieldset>
-      <legend>Projecteurs</legend>
+  <div class="dlg-body" data-pane="fx">
+    <div class="block">
+      <h3>Projecteurs</h3>
       <div class="tablewrap">
         <table>
-          <thead><tr><th>Nom</th><th>Univers Art-Net</th><th>Adresse DMX</th><th>Canaux</th><th></th></tr></thead>
+          <thead><tr><th>Nom</th><th>Univers</th><th>Adresse</th><th>Canaux</th><th><span class="sr" hidden>Retirer</span></th></tr></thead>
           <tbody id="fxRows"></tbody>
         </table>
       </div>
-      <div class="toolbar" style="margin:8px 0 0">
-        <button id="addFx">+ Ajouter un projecteur</button>
-      </div>
+      <div class="row" style="margin-top:8px"><button class="btn small" id="addFx" type="button">Ajouter un projecteur</button></div>
       <div class="warn" id="overlap"></div>
-      <p class="help">
-        <b>Univers</b> : numéro Art-Net, qui commence à 0. Dans MagicQ l'univers 1 sort en général en Art-Net 0 (univers 2 → 1, etc.) — vérifie la colonne Art-Net dans <code>Setup &gt; DMX I/O</code>.<br>
-        <b>Canaux</b> : l'ordre des canaux du projecteur, séparés par des virgules.
-        <code>D</code> dimmer, <code>R</code> <code>G</code> <code>B</code>, <code>W</code> blanc, <code>A</code> ambre, <code>U</code> UV, <code>L</code> lime,
-        un nombre = valeur fixe (ex. <code>255</code> pour un shutter ouvert), <code>-</code> = 0.<br>
-        Ex. : <code>D,R,G,B</code> · <code>R,G,B</code> (pas de dimmer : il est simulé) · <code>D,R,G,B,W,0</code> · <code>R,G,B,W,A,U</code>.
-        Les infos sont dans la fenêtre <code>Patch</code> de MagicQ (colonnes Univ / Adresse / Mode).
-      </p>
-    </fieldset>
-
-    <fieldset>
-      <legend>Testeur de canal</legend>
-      <div class="tester">
-        <label class="lbl">Univers
-          <input type="number" id="rawUni" min="0" value="0"></label>
-        <label class="lbl">Canal
-          <input type="number" id="rawAddr" min="1" max="512" value="1"></label>
-        <input class="wide" type="range" id="rawVal" min="0" max="255" value="0" style="--track:linear-gradient(90deg,#222,#fff)">
-        <output id="rawOut" style="font-size:12px">0</output>
-        <button id="rawStop">Arrêter</button>
+      <p class="help"><b>Univers</b> : numéro Art-Net, à partir de 0 (l'univers 1 de MagicQ est en général l'Art-Net 0).
+        <b>Canaux</b> : l'ordre des canaux, séparés par des virgules. <code>D</code> intensité, <code>R</code> <code>G</code> <code>B</code>,
+        <code>L</code> lime, <code>W</code> blanc, <code>A</code> ambre, <code>U</code> UV, un nombre = valeur fixe, <code>-</code> = 0.
+        Exemple ETC ColorSource en mode Direct : <code>D,R,G,B,L,0</code>.</p>
+    </div>
+    <div class="block">
+      <h3>Découverte automatique</h3>
+      <div class="row">
+        <button class="btn" id="discover" type="button">Chercher les projecteurs</button>
+        <span class="muted" id="discPhase" style="font-size:13px"></span>
       </div>
-      <p class="help">Pour trouver un projecteur à l'aveugle : choisis univers + canal et monte le fader. Le testeur s'ajoute par-dessus le reste et s'arrête quand tu fermes les réglages.</p>
-    </fieldset>
+      <div class="err" id="discError" style="margin-top:8px"></div>
+      <div id="discNodes"></div>
+      <div id="discDevices"></div>
+      <p class="help">Les nodes Art-Net répondent toujours. Les projecteurs ne sont trouvés que s'ils gèrent le RDM. MagicQ doit être fermé pendant la recherche.</p>
+    </div>
+  </div>
+
+  <div class="dlg-body" data-pane="console" hidden>
+    <div class="block">
+      <h3>Console MagicQ / Mini Connect</h3>
+      <div class="row">
+        <label class="switch"><input type="checkbox" id="inEnabled"> Écouter la console</label>
+        <label class="row" style="gap:6px"><span class="muted" style="font-size:13px">Univers Art-Net de la console</span>
+          <input type="number" id="inUniverse" min="0" max="32767" style="width:80px"></label>
+        <span class="muted" style="font-size:13px" id="inStatus"></span>
+      </div>
+      <div class="warn" id="inConflict" hidden>Cet univers est aussi celui des projecteurs : choisis-en un autre (par exemple 1), sinon Damogran s'écouterait lui-même.</div>
+      <p class="help">Bouge un fader sur la console : sa colonne s'allume ci-dessous. Choisis alors ce qu'il commande. Un fader n'agit que quand tu le bouges : l'écran garde la main le reste du temps. Blackout et GO se déclenchent quand le fader passe la moitié.</p>
+    </div>
+    <div class="desk" id="desk"></div>
+    <div class="block">
+      <h3>Préparer MagicQ (une seule fois)</h3>
+      <ol class="steps">
+        <li><code>Setup › DMX I/O</code> : univers 1 (les projecteurs) sur <b>None</b>, pour que MagicQ ne se batte pas avec Damogran. Univers 2 en <b>Art-Net</b>, univers Art-Net 1, en broadcast.</li>
+        <li><code>Patch</code> : ajoute 10 <b>Generic Dimmer</b> sur l'univers 2, adresses 1 à 10.</li>
+        <li>Pour chaque fader <i>n</i> de la Mini Connect : sélectionne le dimmer <i>n</i>, mets-le à 100 %, <code>Record</code>, puis le bouton <b>S</b> du fader <i>n</i>. <code>Clear</code>.</li>
+        <li>Laisse MagicQ ouvert avec la Mini Connect branchée, et lance Damogran à côté.</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="dlg-body" data-pane="net" hidden>
+    <div class="block">
+      <h3>Sortie Art-Net</h3>
+      <div class="form">
+        <label>Envoyer à (IP ou broadcast) <input type="text" id="cfgTarget" placeholder="10.255.255.255"></label>
+        <label>Carte réseau de ce PC <select id="cfgBind"></select></label>
+        <label>Port <input type="number" id="cfgPort" min="1" max="65535"></label>
+        <label>Images par seconde <input type="number" id="cfgFps" min="1" max="44"></label>
+      </div>
+      <p class="help">Un seul node : son IP. Plusieurs : le broadcast du réseau (<code>10.255.255.255</code> si le PC est en 10.x.x.x, <code>2.255.255.255</code> en 2.x.x.x).</p>
+    </div>
+    <div class="block">
+      <h3>Testeur de canal</h3>
+      <div class="tester">
+        <label class="lbl">Univers <input type="number" id="rawUni" min="0" value="0"></label>
+        <label class="lbl">Canal <input type="number" id="rawAddr" min="1" max="512" value="1"></label>
+        <label class="lbl wide">Valeur <span class="row" style="flex-wrap:nowrap"><input type="range" id="rawVal" min="0" max="255" value="0"><span class="num" id="rawOut" style="width:32px">0</span></span></label>
+        <button class="btn" id="rawStop" type="button">Arrêter</button>
+      </div>
+      <p class="help">Pour trouver un projecteur à l'aveugle. S'ajoute par-dessus le reste et s'arrête à la fermeture des réglages.</p>
+    </div>
   </div>
 </dialog>
 
 <script>
 const PRESETS = [
-  ["Rouge", 255, 0, 0], ["Orange", 255, 90, 0], ["Ambre", 255, 150, 20], ["Jaune", 255, 230, 0],
-  ["Vert", 0, 255, 0], ["Cyan", 0, 255, 255], ["Bleu", 0, 40, 255], ["Bleu nuit", 20, 0, 160],
-  ["Violet", 130, 0, 255], ["Magenta", 255, 0, 200], ["Rose", 255, 80, 140],
-  ["Blanc chaud", 255, 170, 90], ["Blanc", 255, 255, 255],
+  ["Rouge", 255, 0, 0], ["Ambre", 255, 120, 0], ["Jaune", 255, 220, 0], ["Vert", 0, 255, 0], ["Cyan", 0, 255, 220],
+  ["Bleu", 0, 50, 255], ["Bleu nuit", 30, 0, 170], ["Violet", 140, 0, 255], ["Magenta", 255, 0, 190], ["Rose", 255, 70, 130],
 ];
-const EXTRAS = { W: "Blanc", A: "Ambre", U: "UV", L: "Lime" };
-const WHITES = [[2700, "2700 K chaud"], [3200, "3200 K"], [4000, "4000 K"], [5600, "5600 K"], [6500, "6500 K froid"]];
+const EXTRAS = { L: "Lime", W: "Blanc", A: "Ambre", U: "UV" };
+const TICKS = [2700, 3200, 4000, 5600, 6500];
+const KMIN = 2700, KMAX = 6500;
 
-let config = null, state = null, selected = new Set();
+let config = null, state = null, input = null, selected = new Set();
 let pending = {}, sendTimer = null, lastEdit = 0, lastPackets = -1;
 const $ = id => document.getElementById(id);
+function el(tag, attrs, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (k.startsWith("on")) e[k] = v; else if (v !== false && v != null) e.setAttribute(k, v === true ? "" : v);
+  }
+  for (const k of kids) if (k != null && k !== false) e.append(k);
+  return e;
+}
 
 /* ---------- couleurs ---------- */
 function hsToRgb(h, s) {
   s /= 255; const f = n => { const k = (n + h / 60) % 6; return 255 * (1 - s * Math.max(0, Math.min(k, 4 - k, 1))); };
   return [f(5), f(3), f(1)].map(Math.round);
-}
-// Couleur approximative d'un blanc a une temperature donnee (approximation de Tanner Helland)
-function kelvinToRgb(k) {
-  const t = k / 100, c = v => Math.round(Math.max(0, Math.min(255, v)));
-  const r = t <= 66 ? 255 : 329.698727446 * Math.pow(t - 60, -0.1332047592);
-  const g = t <= 66 ? 99.4708025861 * Math.log(t) - 161.1195681661 : 288.1221695283 * Math.pow(t - 60, -0.0755148492);
-  const b = t >= 66 ? 255 : t <= 19 ? 0 : 138.5177312231 * Math.log(t - 10) - 305.0447927307;
-  return [c(r), c(g), c(b)];
-}
-// Lumiere reellement emise (pour l'apercu) : le lime est un vert-jaune, le blanc s'ajoute partout
-function emitted(st) {
-  const l = st.l ?? 0, w = st.w ?? 0, a = st.a ?? 0;
-  return [(st.r ?? 0) + 0.75 * l + w + a, (st.g ?? 0) + l + w + 0.6 * a, (st.b ?? 0) + w].map(v => Math.min(255, v));
 }
 function rgbToHs(r, g, b) {
   const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
@@ -295,8 +423,36 @@ function rgbToHs(r, g, b) {
   if (h < 0) h += 360;
   return [Math.round(h), max ? Math.round(255 * d / max) : 0];
 }
+// Approximation de Tanner Helland : couleur d'un blanc a k kelvins (pour l'affichage et les projecteurs sans lime)
+function kelvinToRgb(k) {
+  const t = k / 100, c = v => Math.round(Math.max(0, Math.min(255, v)));
+  const r = t <= 66 ? 255 : 329.698727446 * Math.pow(t - 60, -0.1332047592);
+  const g = t <= 66 ? 99.4708025861 * Math.log(t) - 161.1195681661 : 288.1221695283 * Math.pow(t - 60, -0.0755148492);
+  const b = t >= 66 ? 255 : t <= 19 ? 0 : 138.5177312231 * Math.log(t - 10) - 305.0447927307;
+  return [c(r), c(g), c(b)];
+}
+// Blancs pour projecteurs RGB + lime (ETC ColorSource) : le blanc vient surtout du lime,
+// peu de vert et de bleu (l'indigo rosit les peaux). Memes valeurs que le serveur.
+const LIME_WHITES = [[2700, 255, 180, 0, 10], [3200, 255, 150, 0, 30], [4000, 255, 125, 15, 55], [5600, 255, 80, 60, 140], [6500, 230, 70, 70, 170]];
+function limeWhite(k) {
+  const t = LIME_WHITES;
+  if (k <= t[0][0]) return t[0].slice(1);
+  for (let i = 1; i < t.length; i++) if (k <= t[i][0]) {
+    const f = (k - t[i - 1][0]) / (t[i][0] - t[i - 1][0]);
+    return [1, 2, 3, 4].map(j => Math.round(t[i - 1][j] + (t[i][j] - t[i - 1][j]) * f));
+  }
+  return t[t.length - 1].slice(1);
+}
+// Lumiere reellement emise, pour l'apercu : le lime est un vert-jaune, le blanc s'ajoute partout
+function emitted(st) {
+  const l = st.l ?? 0, w = st.w ?? 0, a = st.a ?? 0;
+  return [(st.r ?? 0) + 0.75 * l + w + a, (st.g ?? 0) + l + w + 0.6 * a, (st.b ?? 0) + w].map(v => Math.min(255, v));
+}
+// Couleur affichee a l'ecran : un blanc est montre a sa temperature (le melange lime + rouge ne se simule pas bien)
+function preview(st) { return st.k ? kelvinToRgb(st.k) : emitted(st); }
 function layoutOf(fx) { return String(fx.layout || "").toUpperCase().split(/[,; ]+/).filter(Boolean); }
 function fxState(id) { return state.fixtures[id] || (state.fixtures[id] = { dim: 0, h: 0, s: 0, r: 255, g: 255, b: 255 }); }
+function level(st) { return state.blackout ? 0 : (st.dim ?? 0) / 255 * (state.master / 255); }
 
 /* ---------- reseau ---------- */
 async function api(path, body) {
@@ -318,7 +474,7 @@ function queue(patch) {
 async function flush() {
   sendTimer = null;
   const body = pending; pending = {};
-  try { await api("/api/state", body); } catch (e) { setStatus(false, "Erreur : " + e.message); }
+  try { await api("/api/state", body); } catch (e) { setStatus("err", "Erreur : " + e.message); }
 }
 let pollTimer = null;
 async function poll() {
@@ -326,207 +482,292 @@ async function poll() {
   let fast = false;
   try {
     const snap = await api("/api/state");
-    const cfgChanged = JSON.stringify(snap.config) !== JSON.stringify(config);
+    const cfgChanged = JSON.stringify(snap.config.fixtures) !== JSON.stringify(config && config.fixtures);
     if (!state || Date.now() - lastEdit > 1500) state = snap.state;
-    if (cfgChanged) { config = snap.config; renderGrid(); }
-    else refreshAll();
-    window.localIps = snap.local_ips;
-    window.discovery = snap.discovery;
-    fast = snap.fading;
     for (const k of ["scenes", "active_scene", "fade"]) state[k] = snap.state[k];   // toujours a jour, meme pendant une edition
-    renderScenes();
-    if ($("setup").open) renderDiscovery();
-    if (snap.error) setStatus(false, snap.error);
-    else setStatus(snap.packets !== lastPackets, `Art-Net → ${config.target_ip}`);
+    config = snap.config; input = snap.input;
+    window.localIps = snap.local_ips; window.discovery = snap.discovery;
+    if (cfgChanged) { renderStage(); buildFine(); }
+    refresh(); renderScenes(); renderConsoleChip();
+    if ($("setup").open) { renderDiscovery(); renderDesk(); }
+    fast = snap.fading || ($("setup").open && activeTab === "console");
+    if (snap.error) setStatus("err", snap.error);
+    else setStatus(snap.packets !== lastPackets ? "ok" : "err", `Art-Net vers ${config.target_ip}`);
     lastPackets = snap.packets;
-  } catch (e) { setStatus(false, "Serveur injoignable — damogran.py est-il lancé ?"); }
-  pollTimer = setTimeout(poll, fast ? 150 : 1000);   // plus rapide pendant un fondu
+  } catch (e) { setStatus("err", "Damogran ne répond pas : la fenêtre noire est-elle ouverte ?"); }
+  pollTimer = setTimeout(poll, fast ? 150 : 1000);   // plus rapide pendant un fondu ou en reglage console
 }
-function setStatus(ok, txt) { $("dot").className = "dot " + (ok ? "ok" : "err"); $("statusText").textContent = txt; }
+function setStatus(kind, txt) { $("dot").className = "dot " + kind; $("statusText").textContent = txt; }
 
-/* ---------- grille ---------- */
-const ALL = "__all";   // carte "Tous" : ses faders agissent sur tous les projecteurs (ou la selection)
-function targets(id) { return id === ALL ? groupIds() : selected.has(id) ? [...selected] : [id]; }
+/* ---------- selection ---------- */
+function groupIds() { return selected.size ? [...selected] : config.fixtures.map(f => f.id); }
+function lead() { const id = groupIds()[0]; return id ? (state.fixtures[id] || {}) : {}; }
 
-function renderGrid() {
-  const grid = $("grid"); grid.innerHTML = "";
-  const allLayout = [...new Set(config.fixtures.flatMap(layoutOf))].filter(t => /^[A-Z]+$/.test(t)).join(",");
-  const group = { id: ALL, name: "Tous", universe: 0, address: 0, layout: allLayout };
-  for (const fx of (config.fixtures.length > 1 ? [group] : []).concat(config.fixtures)) {
-    const lay = layoutOf(fx);
-    const card = document.createElement("div");
-    card.className = "card"; card.dataset.id = fx.id;
-    card.innerHTML = `
-      <div class="card-head">
-        <div class="lamp"></div>
-        <div><div class="name"></div><div class="addr"></div></div>
-        <div class="chk">✓</div>
-      </div>
-      <div class="row"><span>Dim</span><input type="range" data-k="dim" min="0" max="255" style="--track:linear-gradient(90deg,#222,#fff)"><output></output></div>
-      <div class="row hs"><span>Teinte</span><input type="range" class="hue" data-k="h" min="0" max="359"><output></output></div>
-      <div class="row hs"><span>Sat.</span><input type="range" data-k="s" min="0" max="255"><output></output></div>
-      <div class="row raw"><span>R</span><input type="range" data-k="r" min="0" max="255" style="--track:linear-gradient(90deg,#222,#ff3b3b)"><output></output></div>
-      <div class="row raw"><span>G</span><input type="range" data-k="g" min="0" max="255" style="--track:linear-gradient(90deg,#222,#3bff5a)"><output></output></div>
-      <div class="row raw"><span>B</span><input type="range" data-k="b" min="0" max="255" style="--track:linear-gradient(90deg,#222,#3b6bff)"><output></output></div>
-      ${Object.keys(EXTRAS).filter(t => lay.includes(t)).map(t =>
-        `<div class="row"><span>${t}</span><input type="range" data-k="${t.toLowerCase()}" min="0" max="255" title="${EXTRAS[t]}" style="--track:linear-gradient(90deg,#222,#ccc)"><output></output></div>`).join("")}
-      <div class="card-actions">
-        <button data-act="identify" title="Fait clignoter le projecteur">Identifier</button>
-        <input type="color" data-act="picker" title="Choisir une couleur" style="flex:1;height:34px;padding:0 2px;border:1px solid var(--line);border-radius:8px;background:var(--panel-2)">
-      </div>`;
-    card.querySelector(".name").textContent = fx.name;
-    card.querySelector(".addr").textContent = fx.id === ALL ? "" : `U${fx.universe} · ${fx.address}–${fx.address + Math.max(lay.length, 1) - 1} · ${lay.join(" ")}`;
-    card.querySelector(".card-head").onclick = fx.id === ALL
-      ? () => { selected.size ? selected.clear() : config.fixtures.forEach(f => selected.add(f.id)); refreshAll(); }
-      : () => { selected.has(fx.id) ? selected.delete(fx.id) : selected.add(fx.id); refreshAll(); };
-    if (fx.id === ALL) { card.classList.add("group"); card.querySelector(".chk").remove(); }
-    card.querySelectorAll("input[type=range]").forEach(inp => inp.oninput = () => onSlider(fx.id, inp.dataset.k, +inp.value));
-    card.querySelector("[data-act=identify]").onclick = () => queue({ identify: targets(fx.id) });
-    card.querySelector("[data-act=picker]").oninput = e => {
-      const h = e.target.value; applyRgb(targets(fx.id), parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16));
-    };
-    grid.appendChild(card);
-  }
-  for (const id of [...selected]) if (!config.fixtures.some(f => f.id === id)) selected.delete(id);
-  refreshAll();
+/* ---------- fader vertical (comme sur la console) ---------- */
+function makeFader({ label, cls = "", fill, onInput }) {
+  const root = el("div", { class: "fader " + cls, role: "slider", tabindex: 0, "aria-label": label, "aria-valuemin": 0, "aria-valuemax": 100 });
+  const track = el("div", { class: "track" }), fillEl = el("div", { class: "fill" }), cap = el("div", { class: "cap" });
+  const val = el("div", { class: "val" }), lab = el("div", { class: "lab" }, label);
+  if (fill) fillEl.style.setProperty("--fill", fill);
+  track.append(fillEl, cap); root.append(val, track, lab);
+  let value = 0;
+  const show = v => {
+    value = v; const p = v / 255;
+    fillEl.style.height = `calc(${p * 100}% - ${p * 6}px)`;
+    cap.style.bottom = `calc(${p * 100}% - ${p * 2}px + 1px)`;
+    const pct = Math.round(p * 100); val.textContent = pct;
+    root.setAttribute("aria-valuenow", pct); root.setAttribute("aria-valuetext", pct + " %");
+  };
+  const emit = v => { v = Math.max(0, Math.min(255, Math.round(v))); show(v); onInput(v); };
+  const fromY = e => { const r = track.getBoundingClientRect(); return (1 - (e.clientY - r.top) / r.height) * 255; };
+  track.addEventListener("pointerdown", e => { track.setPointerCapture(e.pointerId); root.dataset.drag = "1"; emit(fromY(e)); });
+  track.addEventListener("pointermove", e => { if (root.dataset.drag) emit(fromY(e)); });
+  const end = () => { delete root.dataset.drag; };
+  track.addEventListener("pointerup", end); track.addEventListener("pointercancel", end);
+  root.addEventListener("keydown", e => {
+    const step = { ArrowUp: 2.55, ArrowRight: 2.55, ArrowDown: -2.55, ArrowLeft: -2.55, PageUp: 25.5, PageDown: -25.5 }[e.key];
+    if (step) { emit(value + step); e.preventDefault(); }
+    if (e.key === "Home") { emit(0); e.preventDefault(); }
+    if (e.key === "End") { emit(255); e.preventDefault(); }
+  });
+  return { el: root, set: v => { if (!root.dataset.drag) show(v); } };
 }
 
-function onSlider(id, k, v) {
+/* ---------- actions sur la selection ---------- */
+function setDim(dim) {
   const patch = {};
-  for (const t of targets(id)) {
-    const st = fxState(t); st[k] = v;
-    const p = { [k]: v };
-    if (k === "r" || k === "g" || k === "b") { [st.h, st.s] = rgbToHs(st.r ?? 0, st.g ?? 0, st.b ?? 0); Object.assign(p, { h: st.h, s: st.s }); }
-    if (k === "h" || k === "s") { [st.r, st.g, st.b] = hsToRgb(st.h || 0, st.s ?? 0); Object.assign(p, { h: st.h || 0, s: st.s ?? 0, r: st.r, g: st.g, b: st.b }); }
-    patch[t] = p;
-  }
-  queue({ fixtures: patch }); refreshAll();
+  for (const id of groupIds()) { fxState(id).dim = dim; patch[id] = { dim }; }
+  queue({ fixtures: patch }); refresh();
 }
-function applyRgb(ids, r, g, b, dim) {
-  const [h, s] = rgbToHs(r, g, b), patch = {};
-  for (const id of ids) {
-    const st = fxState(id); Object.assign(st, { r, g, b, h, s, w: 0, l: 0 });   // couleur pure : on coupe blanc/lime
-    if (dim !== undefined) st.dim = dim;
-    patch[id] = { r, g, b, h, s, w: 0, l: 0, ...(dim !== undefined ? { dim } : {}) };
-    if (dim === undefined && !st.dim) { st.dim = 255; patch[id].dim = 255; }  // couleur choisie sur un spot eteint -> on l'allume
+function setChannel(k, v) {
+  const patch = {};
+  for (const id of groupIds()) {
+    const st = fxState(id); st[k] = v; const p = { [k]: v };
+    if ("rgb".includes(k)) { [st.h, st.s] = rgbToHs(st.r ?? 0, st.g ?? 0, st.b ?? 0); Object.assign(p, { h: st.h, s: st.s }); }
+    patch[id] = p;
   }
-  queue({ fixtures: patch }); refreshAll();
+  queue({ fixtures: patch }); refresh();
 }
-// Blancs pour projecteurs RGB + lime (ETC ColorSource) : le blanc vient surtout du lime,
-// peu de vert et de bleu (l'indigo rosit les peaux). Points de depart a ajuster a l'oeil.
-const LIME_WHITES = [[2700, 255, 180, 0, 10], [3200, 255, 150, 0, 30], [4000, 255, 125, 15, 55], [5600, 255, 80, 60, 140], [6500, 230, 70, 70, 170]];
-function limeWhite(k) {
-  const t = LIME_WHITES;
-  if (k <= t[0][0]) return t[0].slice(1);
-  for (let i = 1; i < t.length; i++) if (k <= t[i][0]) {
-    const f = (k - t[i - 1][0]) / (t[i][0] - t[i - 1][0]);
-    return [1, 2, 3, 4].map(j => Math.round(t[i - 1][j] + (t[i][j] - t[i - 1][j]) * f));
+function applyHs(h, s) {
+  const [r, g, b] = hsToRgb(h, s), patch = {};
+  for (const id of groupIds()) {
+    const st = fxState(id), vals = { h, s, r, g, b, w: 0, l: 0, k: 0 };   // couleur pure : on coupe blanc et lime
+    if (!st.dim) vals.dim = 255;                                     // couleur choisie sur un spot eteint : on l'allume
+    Object.assign(st, vals); patch[id] = vals;
   }
-  return t[t.length - 1].slice(1);
+  queue({ fixtures: patch }); refresh();
 }
-// Blanc : on remplace au maximum le melange RGB par les LED blanches / lime du projecteur
-function applyWhite(ids, kelvin) {
+function applyWhite(kelvin) {
   const [r0, g0, b0] = kelvinToRgb(kelvin), [h, s] = rgbToHs(r0, g0, b0), patch = {};
-  for (const id of ids) {
+  for (const id of groupIds()) {
     const fx = config.fixtures.find(f => f.id === id), lay = fx ? layoutOf(fx) : [];
     let r = r0, g = g0, b = b0, w = 0, l = 0;
     if (lay.includes("L") && !lay.includes("W")) [l, r, g, b] = limeWhite(kelvin);
     else if (lay.includes("W")) { w = Math.min(r, g, b); r -= w; g -= w; b -= w; }
-    const st = fxState(id), vals = { r, g, b, w, l, h, s };
+    const st = fxState(id), vals = { r, g, b, w, l, h, s, k: kelvin };
     if (!st.dim) vals.dim = 255;
     Object.assign(st, vals); patch[id] = vals;
   }
-  queue({ fixtures: patch }); refreshAll();
+  queue({ fixtures: patch }); refresh();
 }
-function setDim(ids, dim) {
-  const patch = {};
-  for (const id of ids) { fxState(id).dim = dim; patch[id] = { dim }; }
-  queue({ fixtures: patch }); refreshAll();
-}
-function groupIds() { return selected.size ? [...selected] : config.fixtures.map(f => f.id); }
 
-function refreshAll() {
-  if (!config || !state) return;
-  for (const card of $("grid").children) {
-    const id = card.dataset.id;
-    const st = id === ALL ? (state.fixtures[groupIds()[0]] || {}) : fxState(id);   // la carte Tous affiche le 1er concerne
-    card.classList.toggle("sel", selected.has(id));
-    if (id === ALL) card.querySelector(".addr").textContent = selected.size ? `Agit sur les ${selected.size} sélectionnés` : `Agit sur les ${config.fixtures.length} projecteurs`;
-    const [r, g, b] = [st.r ?? 0, st.g ?? 0, st.b ?? 0];
-    const [er, eg, eb] = emitted(st);
-    const k = state.blackout ? 0 : (st.dim ?? 0) / 255 * (state.master / 255);
-    const lamp = card.querySelector(".lamp");
-    lamp.style.background = `rgb(${er * k | 0},${eg * k | 0},${eb * k | 0})`;
-    lamp.style.boxShadow = k > 0.02 ? `0 0 ${8 + 18 * k}px rgba(${er | 0},${eg | 0},${eb | 0},${0.25 + 0.5 * k})` : "none";
-    card.querySelectorAll("input[type=range]").forEach(inp => {
-      const key = inp.dataset.k, v = st[key] ?? 0;
-      if (document.activeElement !== inp || Date.now() - lastEdit > 1500) inp.value = v;
-      inp.nextElementSibling.textContent = key === "h" ? `${v}°` : `${Math.round(v / 2.55)}%`;
-      if (key === "s") { const [hr, hg, hb] = hsToRgb(st.h || 0, 255); inp.style.setProperty("--track", `linear-gradient(90deg,#fff,rgb(${hr},${hg},${hb}))`); }
-    });
-    const pick = card.querySelector("[data-act=picker]");
-    if (document.activeElement !== pick) pick.value = "#" + [r, g, b].map(x => (x | 0).toString(16).padStart(2, "0")).join("");
+/* ---------- plateau ---------- */
+function renderStage() {
+  const stage = $("stage"); stage.innerHTML = "";
+  config.fixtures.forEach((fx, i) => {
+    const b = el("button", { class: "spot", type: "button", "data-id": fx.id, "aria-pressed": "false", title: `${fx.name} · univers ${fx.universe}, adresse ${fx.address}` },
+      el("span", { class: "pool" }, el("span", { class: "n" }, String(i + 1))),
+      el("span", { class: "name" }, fx.name),
+      el("span", { class: "lvl num" }, ""));
+    b.onclick = e => {
+      if (e.shiftKey || e.ctrlKey || e.metaKey || selected.size) selected.has(fx.id) ? selected.delete(fx.id) : selected.add(fx.id);
+      else selected.add(fx.id);
+      refresh();
+    };
+    stage.append(b);
+  });
+  if (!config.fixtures.length) stage.append(el("p", { class: "empty" }, "Aucun projecteur. Ouvre les Réglages pour les ajouter ou les chercher."));
+  for (const id of [...selected]) if (!config.fixtures.some(f => f.id === id)) selected.delete(id);
+}
+
+/* ---------- reglage ---------- */
+const dimF = makeFader({ label: "Intensité", cls: "big", fill: "#d9d2c5", onInput: setDim });
+$("dimFader").append(dimF.el);
+let fineFaders = {};
+function buildFine() {
+  const box = $("fineFaders"); box.innerHTML = ""; fineFaders = {};
+  const present = new Set(config.fixtures.flatMap(layoutOf));
+  const chans = [["r", "Rouge", "#e2483b"], ["g", "Vert", "#4fbf62"], ["b", "Bleu", "#4a6cf0"]]
+    .concat(Object.entries(EXTRAS).filter(([t]) => present.has(t)).map(([t, name]) => [t.toLowerCase(), name, t === "L" ? "#c6dd3c" : "#cfc8bb"]));
+  for (const [k, name, color] of chans) {
+    const f = makeFader({ label: name, cls: "slim", fill: color, onInput: v => setChannel(k, v) });
+    fineFaders[k] = f; box.append(f.el);
   }
-  $("master").value = state.master;
-  $("masterOut").textContent = Math.round(state.master / 2.55) + "%";
-  $("blackout").classList.toggle("on", !!state.blackout);
-  $("selHint").textContent = selected.size
-    ? `${selected.size} sélectionné(s) — les réglages s'appliquent à tous les sélectionnés`
-    : "Aucune sélection : couleurs et boutons ci-dessous agissent sur tous les projecteurs. Clique sur un nom pour sélectionner.";
+}
+for (const [name, r, g, b] of PRESETS) {
+  const sw = el("button", { class: "sw", type: "button", title: name, "aria-label": name });
+  sw.style.background = `rgb(${r},${g},${b})`;
+  sw.onclick = () => { const [h, s] = rgbToHs(r, g, b); applyHs(h, s); };
+  $("swatches").append(sw);
+}
+// champ de couleur : teinte de gauche a droite, saturation de bas (blanc) en haut (pur)
+const field = $("field");
+function fieldPick(e) {
+  const r = field.getBoundingClientRect();
+  const x = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)), y = Math.max(0, Math.min(1, (e.clientY - r.top) / r.height));
+  applyHs(Math.round(x * 359), Math.round((1 - y) * 255));
+}
+field.addEventListener("pointerdown", e => { field.setPointerCapture(e.pointerId); field.dataset.drag = "1"; fieldPick(e); });
+field.addEventListener("pointermove", e => { if (field.dataset.drag) fieldPick(e); });
+field.addEventListener("pointerup", () => delete field.dataset.drag);
+field.addEventListener("keydown", e => {
+  const st = lead(); let h = st.h ?? 0, s = st.s ?? 0;
+  if (e.key === "ArrowLeft") h = (h + 355) % 360; else if (e.key === "ArrowRight") h = (h + 5) % 360;
+  else if (e.key === "ArrowUp") s = Math.min(255, s + 13); else if (e.key === "ArrowDown") s = Math.max(0, s - 13); else return;
+  e.preventDefault(); applyHs(h, s);
+});
+// bande de temperature
+const temp = $("temp");
+temp.style.background = `linear-gradient(to right, ${TICKS.map(k => { const [r, g, b] = kelvinToRgb(k); return `rgb(${r},${g},${b}) ${(k - KMIN) / (KMAX - KMIN) * 100}%`; }).join(", ")})`;
+function tempPick(e) {
+  const r = temp.getBoundingClientRect(), x = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+  applyWhite(Math.round((KMIN + x * (KMAX - KMIN)) / 50) * 50);
+}
+temp.addEventListener("pointerdown", e => { temp.setPointerCapture(e.pointerId); temp.dataset.drag = "1"; tempPick(e); });
+temp.addEventListener("pointermove", e => { if (temp.dataset.drag) tempPick(e); });
+temp.addEventListener("pointerup", () => delete temp.dataset.drag);
+temp.addEventListener("keydown", e => {
+  const k = lead().k ?? 3200, d = { ArrowLeft: -100, ArrowDown: -100, ArrowRight: 100, ArrowUp: 100 }[e.key];
+  if (d) { e.preventDefault(); applyWhite(Math.max(KMIN, Math.min(KMAX, k + d))); }
+});
+for (const k of TICKS) {
+  const t = el("button", { type: "button", title: `Blanc ${k} K` }, `${k} K`);
+  t.onclick = () => applyWhite(k);
+  $("tempTicks").append(t);
+}
+$("identify").onclick = () => queue({ identify: groupIds() });
+$("full").onclick = () => setDim(255);
+$("off").onclick = () => setDim(0);
+$("master").oninput = e => { state.master = +e.target.value; queue({ master: state.master }); refresh(); };
+
+function refresh() {
+  if (!config || !state) return;
+  for (const b of $("stage").querySelectorAll(".spot")) {
+    const id = b.dataset.id, st = state.fixtures[id] || {}, k = level(st), [r, g, bl] = preview(st);
+    b.setAttribute("aria-pressed", selected.has(id) ? "true" : "false");
+    const pool = b.querySelector(".pool"), c = `${r | 0},${g | 0},${bl | 0}`;
+    pool.style.background = k > 0.01
+      ? `radial-gradient(circle at 50% 50%, rgba(${c},${Math.min(1, 0.35 + k)}) 0%, rgba(${c},${0.85 * k}) 45%, rgba(${c},${0.12 * k}) 72%, transparent 100%)`
+      : "transparent";
+    pool.style.borderColor = k > 0.01 ? "transparent" : "";
+    b.querySelector(".lvl").textContent = k > 0.004 ? Math.round((st.dim ?? 0) / 2.55) + " %" : "éteint";
+  }
+  const n = selected.size, total = config.fixtures.length;
+  $("targetName").textContent = n === 0 ? `tous les spots (${total})` : n === 1
+    ? (config.fixtures.find(f => f.id === [...selected][0]) || {}).name || "" : `${n} spots`;
+  $("selHint").textContent = n ? "clic : ajoute ou retire" : "rien de sélectionné : le réglage agit sur tous";
+  const st = lead();
+  dimF.set(st.dim ?? 0);
+  for (const [k, f] of Object.entries(fineFaders)) f.set(st[k] ?? 0);
+  const mark = $("fieldMark");
+  mark.style.left = ((st.h ?? 0) / 359 * 100) + "%"; mark.style.top = ((1 - (st.s ?? 0) / 255) * 100) + "%";
+  const [mr, mg, mb] = hsToRgb(st.h ?? 0, st.s ?? 0); mark.style.background = `rgb(${mr},${mg},${mb})`;
+  field.setAttribute("aria-valuetext", `teinte ${st.h ?? 0} degrés, saturation ${Math.round((st.s ?? 0) / 2.55)} %`);
+  const tm = $("tempMark");   // repere visible seulement si le spot est en blanc (k = temperature choisie)
+  tm.hidden = !st.k;
+  if (st.k) { tm.style.left = ((st.k - KMIN) / (KMAX - KMIN) * 100) + "%"; temp.setAttribute("aria-valuenow", st.k); }
+  if (document.activeElement !== $("master")) $("master").value = state.master;
+  $("masterOut").textContent = Math.round(state.master / 2.55);
+  $("blackout").setAttribute("aria-pressed", state.blackout ? "true" : "false");
 }
 
-/* ---------- barre du haut / palette ---------- */
-for (const [name, r, g, b] of PRESETS) {
-  const btn = document.createElement("button");
-  btn.className = "sw"; btn.title = name; btn.style.background = `rgb(${r},${g},${b})`;
-  btn.onclick = () => applyRgb(groupIds(), r, g, b);
-  $("swatches").appendChild(btn);
+/* ---------- memoires ---------- */
+let scenesKey = "";
+function sceneApi(body) { return api("/api/scene", body).then(poll).catch(e => alert("Erreur : " + e.message)); }
+function renderScenes() {
+  const scenes = state.scenes || [], fadeSel = $("fadeSel");
+  if (document.activeElement !== fadeSel) fadeSel.value = String(state.fade ?? 2);
+  const key = JSON.stringify([scenes.map(s => [s.id, s.name, s.fixtures]), state.active_scene, config.fixtures.map(f => f.id)]);
+  if (key === scenesKey) return;
+  scenesKey = key;
+  const list = $("sceneList"); list.innerHTML = "";
+  if (!scenes.length) {
+    list.append(el("p", { class: "empty" }, "Pas encore de mémoire. Règle le plateau, puis « Mémoriser l'état actuel » : la scène revient ensuite d'un clic."));
+    return;
+  }
+  scenes.forEach((sc, i) => {
+    const mini = el("span", { class: "mini", "aria-hidden": "true" });
+    for (const fx of config.fixtures) {
+      const v = (sc.fixtures || {})[fx.id]; if (!v) continue;
+      const k = (v.dim ?? 0) / 255, [r, g, b] = preview(v), d = el("i");
+      d.style.background = `rgb(${r * k | 0},${g * k | 0},${b * k | 0})`; mini.append(d);
+    }
+    list.append(el("div", { class: "scene" + (state.active_scene === sc.id ? " active" : "") },
+      el("button", { class: "go", type: "button", title: "Rappeler", onclick: () => recallScene(sc.id) },
+        el("span", { class: "title" }, el("span", { class: "key" }, i < 9 ? String(i + 1) : ""), el("span", { class: "label" }, sc.name)), mini),
+      el("button", { class: "edit", type: "button", title: "Renommer, écraser ou supprimer", "aria-label": "Modifier " + sc.name, onclick: () => openSceneDlg(sc) }, "⋯")));
+  });
 }
-for (const [k, label] of WHITES) {
-  const [r, g, b] = kelvinToRgb(k);
-  const btn = document.createElement("button");
-  btn.textContent = label; btn.style.background = `rgb(${r},${g},${b})`;
-  btn.title = "Blanc " + k + " K (utilise le lime / blanc du projecteur s'il en a)";
-  btn.onclick = () => applyWhite(groupIds(), k);
-  $("whites").appendChild(btn);
+function recallScene(id) { sceneApi({ action: "recall", id, fade: +$("fadeSel").value }); }
+function openSceneDlg(sc) {
+  const dlg = $("sceneDlg"), btns = $("sceneDlgBtns");
+  $("sceneDlgTitle").textContent = sc ? sc.name : "Nouvelle mémoire";
+  $("sceneName").value = sc ? sc.name : "Mémoire " + ((state.scenes || []).length + 1);
+  btns.innerHTML = "";
+  const done = body => { dlg.close(); sceneApi(body); }, name = () => $("sceneName").value.trim();
+  if (sc) btns.append(
+    el("button", { class: "btn primary", type: "button", onclick: () => done({ action: "rename", id: sc.id, name: name() }) }, "Renommer"),
+    el("button", { class: "btn", type: "button", title: "Remplace le contenu par l'état actuel du plateau", onclick: () => done({ action: "save", id: sc.id, name: name() }) }, "Remplacer par l'état actuel"),
+    el("button", { class: "btn", type: "button", onclick: () => { if (confirm(`Supprimer « ${sc.name} » ?`)) done({ action: "delete", id: sc.id }); } }, "Supprimer"));
+  else btns.append(el("button", { class: "btn primary", type: "button", onclick: () => done({ action: "save", name: name() }) }, "Mémoriser"));
+  btns.append(el("span", { class: "spacer" }), el("button", { class: "btn quiet", type: "button", onclick: () => dlg.close() }, "Annuler"));
+  $("sceneName").onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); btns.querySelector("button").click(); } };
+  dlg.showModal(); $("sceneName").select();
 }
-$("allFull").onclick = () => setDim(groupIds(), 255);
-$("allHalf").onclick = () => setDim(groupIds(), 128);
-$("allOff").onclick = () => setDim(groupIds(), 0);
-$("selAll").onclick = () => { config.fixtures.forEach(f => selected.add(f.id)); refreshAll(); };
-function setRawMode(on) {
-  document.body.classList.toggle("rawmode", on);
-  $("rawMode").classList.toggle("on", on);
-  try { localStorage.setItem("damogran.raw", on ? "1" : ""); } catch (e) { }
-}
-$("rawMode").onclick = () => setRawMode(!document.body.classList.contains("rawmode"));
-try { if (localStorage.getItem("damogran.raw")) setRawMode(true); } catch (e) { }
-$("selNone").onclick = () => { selected.clear(); refreshAll(); };
-$("master").oninput = e => { state.master = +e.target.value; queue({ master: state.master }); refreshAll(); };
-const toggleBlackout = () => { state.blackout = !state.blackout; queue({ blackout: state.blackout }); refreshAll(); };
+$("sceneNew").onclick = () => openSceneDlg(null);
+$("fadeSel").onchange = e => sceneApi({ action: "fade", fade: +e.target.value });
+
+/* ---------- en-tete ---------- */
+const toggleBlackout = () => { state.blackout = !state.blackout; queue({ blackout: state.blackout }); refresh(); };
 $("blackout").onclick = toggleBlackout;
+$("selAll").onclick = () => { config.fixtures.forEach(f => selected.add(f.id)); refresh(); };
+$("selNone").onclick = () => { selected.clear(); refresh(); };
 document.addEventListener("keydown", e => {
-  if (e.target.matches("input[type=text],input[type=number],select") || $("setup").open || $("sceneDlg").open) return;
+  if (e.target.matches("input,select,textarea") || $("setup").open || $("sceneDlg").open) return;
   if (/^[1-9]$/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) {
-    const sc = (state.scenes || [])[+e.key - 1];
-    if (sc) recallScene(sc.id);
+    const sc = (state.scenes || [])[+e.key - 1]; if (sc) recallScene(sc.id);
   }
   if (e.key === "b" || e.key === "B") toggleBlackout();
-  if (e.key === "Escape") { selected.clear(); refreshAll(); }
+  if (e.key === "Escape") { selected.clear(); refresh(); }
 });
+function renderConsoleChip() {
+  const on = config.input && config.input.enabled, seen = input && input.seen;
+  let kind = "", txt = "Console : non utilisée";
+  if (on && input && input.conflict) { kind = "warn"; txt = "Console : univers à changer"; }
+  else if (on && seen !== null && seen < 3) { kind = "ok"; txt = "Console connectée"; }
+  else if (on) txt = "Console : pas de signal";
+  $("consoleDot").className = "dot " + kind; $("consoleText").textContent = txt;
+}
+$("consoleChip").onclick = () => { openSetup(); showTab("console"); };
 
 /* ---------- reglages ---------- */
+let activeTab = "fx";
+function showTab(t) {
+  activeTab = t;
+  for (const b of document.querySelectorAll("[data-tab]")) b.setAttribute("aria-selected", b.dataset.tab === t ? "true" : "false");
+  for (const p of document.querySelectorAll("[data-pane]")) p.hidden = p.dataset.pane !== t;
+  if (t === "console") { deskKey = ""; renderDesk(); poll(); }
+}
+for (const b of document.querySelectorAll("[data-tab]")) b.onclick = () => showTab(b.dataset.tab);
+
 function fxRow(fx) {
-  const tr = document.createElement("tr");
-  tr.dataset.id = fx.id || "";
-  tr.innerHTML = `
-    <td><input type="text" data-f="name"></td>
-    <td class="n"><input type="number" data-f="universe" min="0"></td>
-    <td class="n"><input type="number" data-f="address" min="1" max="512"></td>
-    <td><input type="text" data-f="layout" placeholder="D,R,G,B"></td>
-    <td><button title="Supprimer">✕</button></td>`;
+  const tr = el("tr", { "data-id": fx.id || "" },
+    el("td", {}, el("input", { type: "text", "data-f": "name", "aria-label": "Nom" })),
+    el("td", { class: "n" }, el("input", { type: "number", "data-f": "universe", min: 0, "aria-label": "Univers" })),
+    el("td", { class: "n" }, el("input", { type: "number", "data-f": "address", min: 1, max: 512, "aria-label": "Adresse" })),
+    el("td", {}, el("input", { type: "text", "data-f": "layout", placeholder: "D,R,G,B", "aria-label": "Canaux" })),
+    el("td", {}, el("button", { class: "btn small quiet", type: "button", "aria-label": "Retirer " + (fx.name || ""), onclick: () => { tr.remove(); checkOverlap(); } }, "Retirer")));
   for (const k of ["name", "universe", "address", "layout"]) tr.querySelector(`[data-f=${k}]`).value = fx[k] ?? "";
-  tr.querySelector("button").onclick = () => { tr.remove(); checkOverlap(); };
   tr.querySelectorAll("input").forEach(i => i.oninput = checkOverlap);
   return tr;
 }
@@ -542,160 +783,141 @@ function checkOverlap() {
   for (let i = 0; i < fx.length; i++) for (let j = i + 1; j < fx.length; j++) {
     const a = fx[i], b = fx[j]; if (a.universe !== b.universe) continue;
     const la = layoutOf(a).length || 1, lb = layoutOf(b).length || 1;
-    if (a.address < b.address + lb && b.address < a.address + la) msgs.push(`⚠ ${a.name} et ${b.name} se chevauchent (univers ${a.universe})`);
+    if (a.address < b.address + lb && b.address < a.address + la) msgs.push(`${a.name} et ${b.name} utilisent les mêmes canaux (univers ${a.universe}).`);
   }
-  for (const f of fx) if (f.address + (layoutOf(f).length || 1) - 1 > 512) msgs.push(`⚠ ${f.name} dépasse le canal 512`);
+  for (const f of fx) if (f.address + (layoutOf(f).length || 1) - 1 > 512) msgs.push(`${f.name} dépasse le canal 512.`);
   $("overlap").textContent = msgs.join("\n");
 }
-$("openSetup").onclick = () => {
+function openSetup() {
   $("cfgTarget").value = config.target_ip; $("cfgPort").value = config.port; $("cfgFps").value = config.fps;
-  const sel = $("cfgBind"); sel.innerHTML = `<option value="">Automatique</option>`;
-  for (const ip of new Set([...(window.localIps || []), config.bind_ip].filter(Boolean)))
-    sel.insertAdjacentHTML("beforeend", `<option value="${ip}">${ip}</option>`);
+  const sel = $("cfgBind"); sel.innerHTML = ""; sel.append(el("option", { value: "" }, "Automatique"));
+  for (const ip of new Set([...(window.localIps || []), config.bind_ip].filter(Boolean))) sel.append(el("option", { value: ip }, ip));
   sel.value = config.bind_ip || "";
-  $("fxRows").innerHTML = ""; config.fixtures.forEach(f => $("fxRows").appendChild(fxRow(f)));
-  checkOverlap(); discKey = ""; renderDiscovery(); $("setup").showModal();
-};
+  $("fxRows").innerHTML = ""; config.fixtures.forEach(f => $("fxRows").append(fxRow(f)));
+  const inp = config.input || { enabled: true, universe: 1, map: {} };
+  $("inEnabled").checked = !!inp.enabled; $("inUniverse").value = inp.universe;
+  inputMap = Object.assign({}, inp.map || {});
+  checkOverlap(); discKey = ""; deskKey = ""; renderDiscovery(); renderDesk();
+  $("setup").showModal();
+}
+$("openSetup").onclick = () => { openSetup(); showTab("fx"); };
 $("addFx").onclick = () => {
   const rows = readRows(), last = rows[rows.length - 1];
   const fx = last ? { name: "Spot " + (rows.length + 1), universe: last.universe, address: Math.min(512, last.address + (layoutOf(last).length || 1)), layout: last.layout }
                   : { name: "Spot 1", universe: 0, address: 1, layout: "D,R,G,B" };
-  $("fxRows").appendChild(fxRow(fx)); checkOverlap();
+  $("fxRows").append(fxRow(fx)); checkOverlap();
 };
 $("cancelSetup").onclick = () => $("setup").close();
 $("setup").addEventListener("close", () => { queue({ raw: null }); $("rawVal").value = 0; $("rawOut").textContent = "0"; });
 $("saveSetup").onclick = async () => {
   const cfg = { target_ip: $("cfgTarget").value.trim(), bind_ip: $("cfgBind").value, port: +$("cfgPort").value || 6454,
                 fps: +$("cfgFps").value || 30, fixtures: readRows() };
-  try { await api("/api/config", cfg); config = null; $("setup").close(); await poll(); }
-  catch (e) { alert("Erreur : " + e.message); }
+  try {
+    await api("/api/config", cfg);
+    await api("/api/input", { enabled: $("inEnabled").checked, universe: +$("inUniverse").value || 0, map: inputMap });
+    $("setup").close(); await poll();
+  } catch (e) { alert("Enregistrement impossible : " + e.message); }
 };
-/* ---------- memoires ---------- */
-let scenesKey = "";
-function sceneApi(body) { return api("/api/scene", body).then(poll).catch(e => alert("Erreur : " + e.message)); }
-function renderScenes() {
-  const scenes = state.scenes || [];
-  const fadeSel = $("fadeSel");
-  if (document.activeElement !== fadeSel) fadeSel.value = String(state.fade ?? 2);
-  const key = JSON.stringify([scenes.map(s => [s.id, s.name, s.fixtures]), state.active_scene, config && config.fixtures.map(f => f.id)]);
-  if (key === scenesKey) return;
-  scenesKey = key;
-  const list = $("sceneList"); list.innerHTML = "";
-  if (!scenes.length) {
-    list.append(el("div", { class: "empty" }, "Aucune mémoire. Règle les projecteurs puis « Mémoriser » : tu pourras rappeler la scène d'un clic (ou touches 1 à 9)."));
-    return;
-  }
-  scenes.forEach((sc, i) => {
-    const dots = el("span", { class: "dots" });
-    for (const fx of (config ? config.fixtures : [])) {
-      const v = (sc.fixtures || {})[fx.id];
-      if (!v) continue;
-      const k = (v.dim ?? 0) / 255;
-      const d = el("i"); d.style.background = `rgb(${(v.r ?? 0) * k | 0},${(v.g ?? 0) * k | 0},${(v.b ?? 0) * k | 0})`;
-      dots.append(d);
+
+/* ---------- console : une tranche par canal ---------- */
+let inputMap = {}, deskKey = "", lastVals = [], liveUntil = {};
+function targetOptions() {
+  const o = [["", "Rien"], ["master", "Master"], ["blackout", "Blackout"], ["dim:all", "Intensité de tous"]];
+  for (const fx of readRows().length ? readRows() : config.fixtures) o.push(["dim:" + fx.id, "Intensité " + fx.name]);
+  o.push(["white:all", "Blanc chaud/froid"], ["hue:all", "Teinte de tous"]);
+  for (const sc of state.scenes || []) o.push(["scene:" + sc.id, "GO " + sc.name]);
+  return o;
+}
+function renderDesk() {
+  if (!input || !config) return;
+  const n = 12, vals = input.values || [], now = Date.now();
+  vals.forEach((v, i) => { if (lastVals.length && v !== lastVals[i]) liveUntil[i] = now + 1500; });
+  lastVals = vals.slice();
+  const opts = targetOptions(), key = JSON.stringify([opts, inputMap]);
+  const desk = $("desk");
+  if (key !== deskKey) {
+    deskKey = key; desk.innerHTML = "";
+    for (let i = 0; i < n; i++) {
+      const sel = el("select", { "aria-label": `Canal ${i + 1} : commande` });
+      for (const [v, label] of opts) sel.append(el("option", { value: v }, label));
+      sel.value = inputMap[String(i + 1)] || "";
+      if (sel.value !== (inputMap[String(i + 1)] || "")) sel.value = "";
+      sel.onchange = () => { if (sel.value) inputMap[String(i + 1)] = sel.value; else delete inputMap[String(i + 1)]; };
+      desk.append(el("div", { class: "ch", "data-ch": i },
+        el("div", { class: "top" }, el("span", { class: "legend" }, `Canal ${i + 1}`), el("span", { class: "num v" }, "")),
+        el("div", { class: "meter", "aria-hidden": "true" }, el("i")), sel));
     }
-    list.append(el("div", { class: "scene" + (state.active_scene === sc.id ? " active" : "") },
-      el("button", { class: "go", title: "Rappeler (touche " + (i + 1) + ")", onclick: () => recallScene(sc.id) },
-        el("small", {}, i < 9 ? String(i + 1) : ""), sc.name, dots),
-      el("button", { class: "edit", title: "Renommer, écraser, supprimer", onclick: () => openSceneDlg(sc) }, "⋯")));
-  });
-}
-function recallScene(id) { sceneApi({ action: "recall", id, fade: +$("fadeSel").value }); }
-function openSceneDlg(sc) {
-  const dlg = $("sceneDlg"), btns = $("sceneDlgBtns");
-  $("sceneDlgTitle").textContent = sc ? "Mémoire « " + sc.name + " »" : "Nouvelle mémoire";
-  $("sceneName").value = sc ? sc.name : "Mémoire " + ((state.scenes || []).length + 1);
-  btns.innerHTML = "";
-  const done = body => { dlg.close(); sceneApi(body); };
-  const name = () => $("sceneName").value.trim();
-  if (sc) {
-    btns.append(
-      el("button", { class: "on", onclick: () => done({ action: "rename", id: sc.id, name: name() }) }, "Renommer"),
-      el("button", { onclick: () => done({ action: "save", id: sc.id, name: name() }), title: "Remplace le contenu par l'état actuel des projecteurs" }, "Écraser avec l'état actuel"),
-      el("button", { class: "danger", onclick: () => { if (confirm("Supprimer « " + sc.name + " » ?")) done({ action: "delete", id: sc.id }); } }, "Supprimer"));
-  } else {
-    btns.append(el("button", { class: "on", onclick: () => done({ action: "save", name: name() }) }, "Mémoriser"));
   }
-  btns.append(el("span", { class: "spacer" }), el("button", { onclick: () => dlg.close() }, "Annuler"));
-  $("sceneName").onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); btns.querySelector("button").click(); } };
-  dlg.showModal(); $("sceneName").select();
+  for (const c of desk.children) {
+    const i = +c.dataset.ch, v = vals[i] ?? 0;
+    c.querySelector(".meter i").style.height = (v / 255 * 100) + "%";
+    c.querySelector(".v").textContent = Math.round(v / 2.55) + " %";
+    c.classList.toggle("live", (liveUntil[i] || 0) > now);
+  }
+  const seen = input.seen;
+  $("inStatus").textContent = !$("inEnabled").checked ? "" : seen === null ? "Aucun signal reçu pour l'instant."
+    : seen < 3 ? `Signal reçu de ${input.source}.` : `Plus de signal depuis ${Math.round(seen)} s.`;
+  $("inConflict").hidden = !config.fixtures.some(f => f.universe === (+$("inUniverse").value || 0));
 }
-$("sceneNew").onclick = () => openSceneDlg(null);
-$("fadeSel").onchange = e => sceneApi({ action: "fade", fade: +e.target.value });
+$("inUniverse").oninput = () => renderDesk();
 
 /* ---------- decouverte ---------- */
-function el(tag, attrs, ...kids) {
-  const e = document.createElement(tag);
-  for (const [k, v] of Object.entries(attrs || {})) if (k === "onclick") e.onclick = v; else e.setAttribute(k, v);
-  for (const k of kids) if (k != null) e.append(k);
-  return e;
-}
 function broadcastOf(ip) {
   const p = ip.split(".");
   return (p[0] === "2" || p[0] === "10") ? `${p[0]}.255.255.255` : `${p[0]}.${p[1]}.${p[2]}.255`;
 }
-function alreadyPatched(d) {
-  return readRows().some(f => f.universe === d.universe && f.address === d.address);
-}
+function alreadyPatched(d) { return readRows().some(f => f.universe === d.universe && f.address === d.address); }
 function addDevice(d) {
   if (alreadyPatched(d)) return;
-  $("fxRows").appendChild(fxRow({ name: d.label || d.model || ("Spot " + d.address), universe: d.universe, address: d.address, layout: d.layout }));
+  $("fxRows").append(fxRow({ name: d.label || d.model || ("Spot " + d.address), universe: d.universe, address: d.address, layout: d.layout }));
   checkOverlap(); renderDiscovery();
 }
 let discKey = "";
 function renderDiscovery() {
   const d = window.discovery; if (!d) return;
   $("discover").disabled = d.running;
-  $("discover").textContent = d.running ? "Recherche…" : (d.nodes.length ? "Relancer la découverte" : "Lancer la découverte");
+  $("discover").textContent = d.running ? "Recherche en cours…" : (d.nodes.length ? "Chercher à nouveau" : "Chercher les projecteurs");
   $("discPhase").textContent = d.phase || "";
   $("discError").textContent = d.error || "";
   const key = JSON.stringify([d.nodes, d.devices, readRows().map(f => [f.universe, f.address])]);
   if (key === discKey) return;
   discKey = key;
-
   const nodes = $("discNodes"); nodes.innerHTML = "";
   if (d.nodes.length) {
     const tb = el("tbody");
-    for (const n of d.nodes) {
-      tb.append(el("tr", {},
-        el("td", {}, n.ip),
-        el("td", {}, n.short_name || "—", n.style ? el("span", { class: "tag" }, "console") : null),
-        el("td", { class: "muted" }, n.universes.length ? "Univers " + n.universes.join(", ") : "aucune sortie"),
-        el("td", { class: "muted" }, n.rdm ? "RDM ✓" : "RDM ?"),
-        el("td", {}, el("button", { onclick: () => { $("cfgTarget").value = n.ip; } }, "Utiliser cette IP"))));
-    }
+    for (const n of d.nodes) tb.append(el("tr", {},
+      el("td", { class: "num" }, n.ip),
+      el("td", {}, n.short_name || "sans nom", n.style ? el("span", { class: "tag" }, "console") : null),
+      el("td", { class: "muted" }, n.universes.length ? "univers " + n.universes.join(", ") : "aucune sortie"),
+      el("td", { class: "muted" }, n.rdm ? "RDM" : ""),
+      el("td", {}, el("button", { class: "btn small", type: "button", onclick: () => { $("cfgTarget").value = n.ip; } }, "Envoyer ici"))));
     const bc = broadcastOf(d.nodes[0].ip);
-    nodes.append(el("div", { class: "disc" },
-      el("h3", {}, `Nodes Art-Net (${d.nodes.length})`),
+    nodes.append(el("div", { style: "margin-top:12px" },
+      el("span", { class: "legend" }, `Nodes Art-Net (${d.nodes.length})`),
       el("div", { class: "tablewrap" }, el("table", {}, tb)),
-      el("div", { class: "toolbar", style: "margin:8px 0 0" },
-        el("button", { onclick: () => { $("cfgTarget").value = bc; } }, `Envoyer à tous (${bc})`),
-        el("span", { class: "hint" }, "Plusieurs nodes : choisis le broadcast. Un seul : son IP suffit."))));
+      el("div", { class: "row", style: "margin-top:8px" },
+        el("button", { class: "btn small", type: "button", onclick: () => { $("cfgTarget").value = bc; } }, `Envoyer à tous (${bc})`))));
   }
-
   const devs = $("discDevices"); devs.innerHTML = "";
   if (d.devices.length) {
-    const tb = el("tbody"), usable = d.devices.filter(x => x.address && x.footprint);
+    const tb = el("tbody");
     for (const x of d.devices) {
-      const name = [x.label, [x.manufacturer, x.model].filter(Boolean).join(" ")].filter(Boolean).join(" — ") || x.uid;
-      let action;
-      if (x.error || !x.address) action = el("span", { class: "muted" }, x.error || "pas d'adresse DMX");
-      else if (alreadyPatched(x)) action = el("span", { class: "muted" }, "déjà dans la liste");
-      else action = el("button", { onclick: () => addDevice(x) }, "Ajouter");
+      const name = [x.label, [x.manufacturer, x.model].filter(Boolean).join(" ")].filter(Boolean).join(" · ") || x.uid;
+      const action = x.error || !x.address ? el("span", { class: "muted" }, x.error || "pas d'adresse DMX")
+        : alreadyPatched(x) ? el("span", { class: "muted" }, "déjà dans la liste")
+        : el("button", { class: "btn small", type: "button", onclick: () => addDevice(x) }, "Ajouter");
       tb.append(el("tr", {},
-        el("td", {}, "U" + x.universe),
-        el("td", {}, x.address ? String(x.address) : "—"),
-        el("td", {}, name),
+        el("td", { class: "num" }, `U${x.universe} · ${x.address || "?"}`), el("td", {}, name),
         el("td", { class: "muted" }, x.personality_name || (x.footprint ? x.footprint + " canaux" : "")),
-        el("td", {}, x.layout || "", x.layout && !x.layout_sure ? el("span", { class: "tag warn-tag", title: "Le projecteur ne décrit pas ses canaux : ordre deviné d'après leur nombre" }, "à vérifier") : null),
+        el("td", {}, x.layout || "", x.layout && !x.layout_sure ? el("span", { class: "tag attn", title: "Le projecteur ne décrit pas ses canaux : ordre deviné" }, "à vérifier") : null),
         el("td", {}, action)));
     }
-    const todo = usable.filter(x => !alreadyPatched(x));
-    devs.append(el("div", { class: "disc" },
-      el("h3", {}, `Projecteurs RDM (${d.devices.length})`),
+    const todo = d.devices.filter(x => x.address && x.footprint && !alreadyPatched(x));
+    devs.append(el("div", { style: "margin-top:12px" },
+      el("span", { class: "legend" }, `Projecteurs RDM (${d.devices.length})`),
       el("div", { class: "tablewrap" }, el("table", {}, tb)),
-      todo.length > 1 ? el("div", { class: "toolbar", style: "margin:8px 0 0" },
-        el("button", { onclick: () => todo.forEach(addDevice) }, `Tout ajouter (${todo.length})`)) : null));
+      todo.length > 1 ? el("div", { class: "row", style: "margin-top:8px" },
+        el("button", { class: "btn small", type: "button", onclick: () => todo.forEach(addDevice) }, `Tout ajouter (${todo.length})`)) : null));
   }
 }
 $("discover").onclick = async () => {
@@ -703,6 +925,7 @@ $("discover").onclick = async () => {
   catch (e) { $("discError").textContent = "Erreur : " + e.message; }
 };
 
+/* ---------- testeur ---------- */
 const sendRaw = () => { $("rawOut").textContent = $("rawVal").value;
   queue({ raw: { universe: +$("rawUni").value || 0, address: Math.max(1, Math.min(512, +$("rawAddr").value || 1)), value: +$("rawVal").value } }); };
 ["rawUni", "rawAddr", "rawVal"].forEach(id => $(id).oninput = sendRaw);

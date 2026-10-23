@@ -15,7 +15,7 @@ $UiPath = Join-Path $Here 'ui.html'
 $Utf8 = New-Object System.Text.UTF8Encoding $false
 $ChanTokens = @('R', 'G', 'B', 'W', 'A', 'U', 'L')
 $FadeKeys = @('dim', 'r', 'g', 'b', 'w', 'a', 'u', 'l')   # valeurs fondues lors du rappel d'une memoire
-$SceneKeys = $FadeKeys + @('h', 's')
+$SceneKeys = $FadeKeys + @('h', 's', 'k')   # k : temperature du blanc choisi (affichage)
 
 function Clamp($v, $lo, $hi) { [Math]::Max($lo, [Math]::Min($hi, $v)) }
 
@@ -67,6 +67,89 @@ function Get-LocalIps {
     } catch { return @() }
 }
 
+# ---- couleurs (memes formules que l'interface) -----------------------------------
+# Blancs pour projecteurs RGB + lime (ETC ColorSource) : le blanc vient surtout du lime,
+# peu de vert et de bleu (l'indigo rosit les peaux). Kelvin, lime, rouge, vert, bleu.
+$LimeWhites = @(@(2700, 255, 180, 0, 10), @(3200, 255, 150, 0, 30), @(4000, 255, 125, 15, 55), @(5600, 255, 80, 60, 140), @(6500, 230, 70, 70, 170))
+
+function Get-LimeWhite([double]$k) {
+    $t = $LimeWhites
+    if ($k -le $t[0][0]) { return @($t[0][1..4]) }
+    for ($i = 1; $i -lt $t.Count; $i++) {
+        if ($k -le $t[$i][0]) {
+            $f = ($k - $t[$i - 1][0]) / ($t[$i][0] - $t[$i - 1][0])
+            $out = @()
+            for ($j = 1; $j -le 4; $j++) { $out += [int][Math]::Round($t[$i - 1][$j] + ($t[$i][$j] - $t[$i - 1][$j]) * $f) }
+            return $out
+        }
+    }
+    return @($t[$t.Count - 1][1..4])
+}
+
+# Approximation de Tanner Helland, pour les projecteurs sans lime
+function Get-KelvinRgb([double]$k) {
+    $t = $k / 100.0
+    if ($t -le 66) { $r = 255; $g = 99.4708025861 * [Math]::Log($t) - 161.1195681661 }
+    else { $r = 329.698727446 * [Math]::Pow($t - 60, -0.1332047592); $g = 288.1221695283 * [Math]::Pow($t - 60, -0.0755148492) }
+    if ($t -ge 66) { $b = 255 } elseif ($t -le 19) { $b = 0 } else { $b = 138.5177312231 * [Math]::Log($t - 10) - 305.0447927307 }
+    return @($r, $g, $b | ForEach-Object { [int][Math]::Round((Clamp $_ 0 255)) })
+}
+
+function Get-HsRgb([double]$h, [double]$s) {
+    $s = $s / 255.0
+    $out = @()
+    foreach ($n in 5, 3, 1) {
+        $k = ($n + $h / 60.0) % 6
+        $out += [int][Math]::Round(255 * (1 - $s * [Math]::Max(0, [Math]::Min([Math]::Min($k, 4 - $k), 1))))
+    }
+    return $out
+}
+
+function Get-RgbHs([double]$r, [double]$g, [double]$b) {
+    $mx = [Math]::Max($r, [Math]::Max($g, $b))
+    $d = $mx - [Math]::Min($r, [Math]::Min($g, $b))
+    $h = 0.0
+    if ($d) {
+        if ($mx -eq $r) { $h = 60 * ((($g - $b) / $d) % 6) }
+        elseif ($mx -eq $g) { $h = 60 * (($b - $r) / $d + 2) }
+        else { $h = 60 * (($r - $g) / $d + 4) }
+    }
+    $h = (($h % 360) + 360) % 360
+    $s = 0
+    if ($mx) { $s = [int][Math]::Round(255 * $d / $mx) }
+    return @([int][Math]::Round($h), $s)
+}
+
+# Valeurs r,g,b,w,l pour un blanc a k kelvins, selon les canaux du projecteur
+function Get-WhiteValues([string]$layout, [double]$k) {
+    $toks = Parse-Layout $layout
+    $rgb = Get-KelvinRgb $k
+    $r = $rgb[0]; $g = $rgb[1]; $b = $rgb[2]
+    $hs = Get-RgbHs $r $g $b
+    $w = 0; $l = 0
+    if ($toks.Contains('L') -and -not $toks.Contains('W')) {
+        $lw = Get-LimeWhite $k
+        $l = $lw[0]; $r = $lw[1]; $g = $lw[2]; $b = $lw[3]
+    } elseif ($toks.Contains('W')) {
+        $w = [Math]::Min($r, [Math]::Min($g, $b)); $r -= $w; $g -= $w; $b -= $w
+    }
+    return @{ r = $r; g = $g; b = $b; w = $w; l = $l; h = $hs[0]; s = $hs[1]; k = [int]([Math]::Round($k / 50.0) * 50) }
+}
+
+# Correspondance proposee pour la Mini Connect : faders 1-8 = spots, 9 = blanc, 10 = master
+function New-DefaultInput($fixtures) {
+    $m = @{}
+    $i = 0
+    foreach ($fx in $fixtures) {
+        if ($i -ge 8) { break }
+        $m[[string]($i + 1)] = 'dim:' + $fx.id
+        $i++
+    }
+    $m['9'] = 'white:all'
+    $m['10'] = 'master'
+    return @{ enabled = $true; universe = 1; map = $m }
+}
+
 # ---- etat --------------------------------------------------------------------
 $Config = Read-Json $ConfigPath
 if (-not $Config) {
@@ -76,6 +159,7 @@ if (-not $Config) {
     }
     $Config = @{ target_ip = '2.255.255.255'; bind_ip = ''; port = 6454; fps = 30; fixtures = $fx }
 }
+if (-not ($Config.input -is [hashtable])) { $Config.input = New-DefaultInput $Config.fixtures }
 $State = Read-Json $StatePath
 if (-not $State) { $State = @{} }
 if (-not $State.ContainsKey('master')) { $State.master = 255 }
@@ -95,6 +179,9 @@ $Dirty = $false
 $LocalIps = Get-LocalIps
 $Udp = $null
 $UdpBind = $null
+$InValues = New-Object byte[] 512   # derniere valeur recue de la console, par canal
+$InSeen = -100.0                    # heure du dernier paquet console
+$InSource = ''
 
 # ---- sortie Art-Net ----------------------------------------------------------
 function Get-Udp {
@@ -522,13 +609,116 @@ function Get-DiscoverySnapshot {
     }
 }
 
+# ---- entree console (Art-Net venant de MagicQ / Mini Connect) --------------------
+function Get-OutputUniverses {
+    $u = @{}
+    foreach ($fx in $Config.fixtures) { $u[[int]$fx.universe] = $true }
+    return $u
+}
+
+function Receive-Console([byte[]]$d, [string]$from) {
+    $inp = $Config.input
+    if ($d.Length -lt 18 -or -not ($inp -is [hashtable]) -or -not $inp.enabled) { return }
+    $uni = [int]$d[14] -bor (([int]$d[15] -band 0x7F) -shl 8)
+    # l'univers de la console doit etre different de ceux des projecteurs (sinon c'est notre propre sortie)
+    if ($uni -ne [int]$inp.universe -or (Get-OutputUniverses).ContainsKey($uni)) { return }
+    $n = [Math]::Min(512, [Math]::Min((([int]$d[16] -shl 8) -bor [int]$d[17]), $d.Length - 18))
+    $now = Get-Now
+    # console (re)connectee apres 3 s de silence : on prend les positions sans rien appliquer
+    if (($now - $script:InSeen) -le 3.0 -and $inp.map -is [hashtable]) {
+        foreach ($chs in @($inp.map.Keys)) {
+            $ch = [int]$chs - 1
+            if ($ch -ge 0 -and $ch -lt $n -and $d[18 + $ch] -ne $script:InValues[$ch]) {
+                Set-ConsoleTarget ([string]$inp.map[$chs]) ([int]$d[18 + $ch]) ([int]$script:InValues[$ch])
+            }
+        }
+    }
+    [Array]::Copy($d, 18, $script:InValues, 0, $n)
+    $script:InSeen = $now
+    $script:InSource = $from
+}
+
+function Set-ConsoleTarget([string]$target, [int]$v, [int]$old) {
+    $i = $target.IndexOf(':')
+    if ($i -ge 0) { $kind = $target.Substring(0, $i); $arg = $target.Substring($i + 1) } else { $kind = $target; $arg = '' }
+    $ids = @($Config.fixtures | ForEach-Object { [string]$_.id })
+    $targets = @()
+    if ($arg -eq 'all') { $targets = $ids } elseif ($ids -contains $arg) { $targets = @($arg) }
+    if ($kind -eq 'master') {
+        $State.master = $v
+    } elseif ($kind -eq 'blackout') {
+        if (($v -ge 128) -ne ($old -ge 128)) { $State.blackout = ($v -ge 128) }
+    } elseif ($kind -eq 'scene') {
+        if ($v -ge 128 -and $old -lt 128) {   # le fader passe la moitie en montant : GO
+            foreach ($sc in $State.scenes) {
+                if ($sc.id -eq $arg) {
+                    $State.active_scene = $sc.id
+                    $tg = $sc.fixtures
+                    if (-not ($tg -is [hashtable])) { $tg = @{} }
+                    Start-Fade $tg ([double]$State.fade)
+                }
+            }
+        }
+    } elseif (($kind -eq 'dim' -or $kind -eq 'white' -or $kind -eq 'hue') -and $targets.Count) {
+        $script:Fade = $null
+        $State.active_scene = $null
+        foreach ($fid in $targets) {
+            if (-not ($State.fixtures[$fid] -is [hashtable])) { $State.fixtures[$fid] = @{} }
+            $cur = $State.fixtures[$fid]
+            if ($kind -eq 'dim') {
+                $cur.dim = $v
+            } elseif ($kind -eq 'white') {
+                $fx = $Config.fixtures | Where-Object { $_.id -eq $fid } | Select-Object -First 1
+                $wv = Get-WhiteValues ([string]$fx.layout) (2700 + $v * 3800 / 255.0)
+                foreach ($k in @($wv.Keys)) { $cur[$k] = $wv[$k] }
+            } else {
+                $h = [int][Math]::Round($v * 359 / 255.0)
+                $s = 255
+                if ($cur.ContainsKey('s') -and $cur.s) { $s = [double]$cur.s }
+                $rgb = Get-HsRgb $h $s
+                $cur.h = $h; $cur.s = $s; $cur.r = $rgb[0]; $cur.g = $rgb[1]; $cur.b = $rgb[2]; $cur.w = 0; $cur.l = 0; $cur.k = 0
+            }
+        }
+    }
+    $script:Dirty = $true
+}
+
+function Set-Input($body) {
+    $inp = $Config.input
+    if (-not ($inp -is [hashtable])) { $inp = New-DefaultInput $Config.fixtures }
+    if ($body.ContainsKey('enabled')) { $inp.enabled = [bool]$body.enabled }
+    if ($body.ContainsKey('universe')) { $inp.universe = [int](Clamp ([int]$body.universe) 0 32767) }
+    if ($body.ContainsKey('map')) {
+        $m = @{}
+        if ($body.map -is [hashtable]) {
+            foreach ($k in @($body.map.Keys)) {
+                $c = [int]$k
+                if ($c -ge 1 -and $c -le 512 -and $body.map[$k]) { $m[[string]$c] = [string]$body.map[$k] }
+            }
+        }
+        $inp.map = $m
+    }
+    $Config.input = $inp
+    Write-Json $ConfigPath $Config
+}
+
 # ---- API ---------------------------------------------------------------------
 function Get-Snapshot {
     return @{ config = $Config; state = $State; raw = $Raw; error = $LastError; packets = $Packets; local_ips = $LocalIps
-        discovery = (Get-DiscoverySnapshot); fading = ($null -ne $script:Fade) }
+        discovery = (Get-DiscoverySnapshot); fading = ($null -ne $script:Fade)
+        input = (Get-InputSnapshot) }
 }
 
 function Is-Number($v) { return ($v -is [ValueType]) -and -not ($v -is [bool]) }
+
+function Get-InputSnapshot {
+    $seen = $null
+    if ($script:InSeen -ge 0) { $seen = [Math]::Round((Get-Now) - $script:InSeen, 1) }
+    $uni = 1
+    if ($Config.input -is [hashtable]) { $uni = [int]$Config.input.universe }
+    return @{ values = @($script:InValues[0..23] | ForEach-Object { [int]$_ }); source = $script:InSource; seen = $seen
+        conflict = (Get-OutputUniverses).ContainsKey($uni) }
+}
 
 function Patch-State($body) {
     if ($body.fixtures -is [hashtable] -and $body.fixtures.Count) {
@@ -545,6 +735,7 @@ function Patch-State($body) {
                 if (Is-Number $vals[$k]) {
                     $max = 255
                     if ($k -eq 'h') { $max = 360 }
+                    if ($k -eq 'k') { $max = 20000 }
                     $cur[$k] = Clamp ([double]$vals[$k]) 0 $max
                 }
             }
@@ -664,7 +855,9 @@ function Set-Config($cfg) {
     if ($bind) { [void][System.Net.IPAddress]::Parse($bind) }
     $port = [int]$cfg.port; if (-not $port) { $port = 6454 }
     $fps = [int]$cfg.fps; if (-not $fps) { $fps = 30 }
-    $script:Config = @{ target_ip = $target; bind_ip = $bind; port = $port; fps = (Clamp $fps 1 44); fixtures = $fixtures }
+    $inp = $script:Config.input
+    if (-not ($inp -is [hashtable])) { $inp = New-DefaultInput $fixtures }
+    $script:Config = @{ target_ip = $target; bind_ip = $bind; port = $port; fps = (Clamp $fps 1 44); fixtures = $fixtures; input = $inp }
     Write-Json $ConfigPath $script:Config
 }
 
@@ -689,6 +882,9 @@ function Handle-Request($client, [string]$method, [string]$path, [byte[]]$bodyBy
             Send-Response $client 200 ([System.IO.File]::ReadAllBytes($UiPath)) 'text/html; charset=utf-8'
         } elseif ($method -eq 'GET' -and $path -eq '/api/state') {
             Send-Json $client 200 (Get-Snapshot)
+        } elseif ($method -eq 'POST' -and $path -eq '/api/input') {
+            Set-Input (ConvertTo-Hash ($Utf8.GetString($bodyBytes) | ConvertFrom-Json))
+            Send-Json $client 200 @{ ok = $true }
         } elseif ($method -eq 'POST' -and $path -eq '/api/scene') {
             $text = $Utf8.GetString($bodyBytes)
             Invoke-SceneAction (ConvertTo-Hash ($text | ConvertFrom-Json))
@@ -774,7 +970,10 @@ try {
             while ($Udp.Available -gt 0) {
                 $remote = New-Object System.Net.IPEndPoint ([System.Net.IPAddress]::Any), 0
                 try { $data = $Udp.Receive([ref]$remote) } catch { break }
-                if ($data.Length -gt 9 -and -not ($data[8] -eq 0 -and $data[9] -eq 0x50)) {   # on ignore l'ArtDmx (y compris le notre)
+                if ($data.Length -le 9) { continue }
+                if ($data[8] -eq 0 -and $data[9] -eq 0x50) {   # ArtDmx : peut-etre la console
+                    try { Receive-Console $data $remote.Address.ToString() } catch { }
+                } else {
                     try { Receive-ArtNet $data $remote.Address.ToString() } catch { }
                 }
             }

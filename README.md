@@ -43,9 +43,26 @@ Le bouton **Identifier** fait clignoter un spot ; le **testeur de canal** permet
 
 ## Utilisation
 
-- Cliquer sur le nom d'un spot pour le sélectionner ; avec une sélection, tout réglage s'applique à tous les sélectionnés.
-- Sans sélection, les pastilles de couleur et les boutons Dim agissent sur tous les spots.
-- **Master**, **Blackout** (touche `B`). L'état est mémorisé et restauré au redémarrage.
+- **Plateau** : chaque spot est dessiné comme une flaque de lumière, à sa couleur et son intensité réelles.
+  Clic pour sélectionner (re-clic pour ajouter ou retirer). Rien de sélectionné : le réglage agit sur tous.
+- **Réglage** : fader d'intensité, champ de couleur (teinte de gauche à droite, saturation de bas en haut),
+  bande de blanc de 2700 K à 6500 K. Sur les projecteurs avec lime (ETC ColorSource), le blanc passe surtout
+  par le lime, pour des peaux moins rosées. « Réglage fin des canaux » donne les faders R, G, B, Lime directs.
+- **Master**, **Blackout** (touche `B`), **Échap** pour tout désélectionner. L'état est gardé au redémarrage.
+
+## Console MagicQ / Mini Connect
+
+Les faders de la Mini Connect ne sont lisibles que par MagicQ. MagicQ sert donc de pont : il envoie la position
+des faders en Art-Net sur un univers libre, et Damogran l'écoute (**Réglages > Console**).
+
+1. MagicQ, `Setup > DMX I/O` : univers 1 (les projecteurs) sur *None* ; univers 2 en Art-Net, univers Art-Net 1, broadcast.
+2. `Patch` : 10 *Generic Dimmer* sur l'univers 2, adresses 1 à 10.
+3. Pour chaque fader *n* : sélectionner le dimmer *n*, 100 %, `Record`, bouton **S** du fader *n*. `Clear`.
+4. Dans Damogran, onglet Console : bouger un fader allume sa colonne, choisir ce qu'il commande
+   (intensité d'un spot ou de tous, blanc chaud/froid, teinte, master, blackout, GO d'une mémoire).
+
+Un fader n'agit que quand on le bouge : à la connexion, Damogran prend la position des faders sans rien changer.
+MagicQ et Damogran tournent alors sur le même PC : c'est à tester avant un spectacle.
 
 ## Mémoires (scènes)
 
