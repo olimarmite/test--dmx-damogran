@@ -1,4 +1,4 @@
 @echo off
 cd /d "%~dp0"
-where py >nul 2>nul && (py damogran.py --lan %*) || (python damogran.py --lan %*)
-pause
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0damogran.ps1" -Lan %*
+if errorlevel 1 pause
