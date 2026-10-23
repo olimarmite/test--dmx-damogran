@@ -88,6 +88,13 @@
   th { text-align: left; font-size: 12px; color: var(--muted); font-weight: 500; padding: 4px; }
   td { padding: 3px 4px; }
   td.n { width: 90px; }
+  .disc { margin-top: 12px; }
+  .disc h3 { font-size: 13px; margin: 0 0 6px; color: var(--muted); font-weight: 500; }
+  .disc td { font-size: 13px; padding: 5px 6px; border-top: 1px solid var(--line); vertical-align: middle; }
+  .disc td.muted, .disc .muted { color: var(--muted); }
+  .disc button { padding: 4px 10px; font-size: 13px; white-space: nowrap; }
+  .tag { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 4px; background: var(--panel-2); color: var(--muted); margin-left: 4px; }
+  .tag.warn-tag { color: var(--accent); }
   .warn { color: var(--accent); font-size: 13px; margin-top: 8px; white-space: pre-line; }
   .err { color: var(--danger); }
   .lbl { display: grid; gap: 4px; font-size: 12px; color: var(--muted); }
@@ -134,6 +141,20 @@
     <button class="on" id="saveSetup">Enregistrer</button>
   </div>
   <div class="dlg-body">
+    <fieldset>
+      <legend>Découverte automatique</legend>
+      <div class="toolbar" style="margin:0">
+        <button class="on" id="discover">Lancer la découverte</button>
+        <span class="hint" id="discPhase"></span>
+      </div>
+      <div class="err" id="discError" style="font-size:13px;margin-top:8px"></div>
+      <div id="discNodes"></div>
+      <div id="discDevices"></div>
+      <p class="help"><b>MagicQ doit être fermé</b> (il occupe le port Art-Net). Les nodes répondent toujours (ArtPoll).
+        Les projecteurs ne sont trouvés que s'ils gèrent le RDM, comme le node : sinon, saisie manuelle ci-dessous.
+        Ajouter un projecteur le met dans la liste plus bas : vérifie, puis <b>Enregistrer</b>.</p>
+    </fieldset>
+
     <fieldset>
       <legend>Réseau Art-Net</legend>
       <div class="form">
@@ -246,6 +267,8 @@ async function poll() {
     if (cfgChanged) { config = snap.config; renderGrid(); }
     else refreshAll();
     window.localIps = snap.local_ips;
+    window.discovery = snap.discovery;
+    if ($("setup").open) renderDiscovery();
     if (snap.error) setStatus(false, snap.error);
     else setStatus(snap.packets !== lastPackets, `Art-Net → ${config.target_ip}`);
     lastPackets = snap.packets;
@@ -405,7 +428,7 @@ $("openSetup").onclick = () => {
     sel.insertAdjacentHTML("beforeend", `<option value="${ip}">${ip}</option>`);
   sel.value = config.bind_ip || "";
   $("fxRows").innerHTML = ""; config.fixtures.forEach(f => $("fxRows").appendChild(fxRow(f)));
-  checkOverlap(); $("setup").showModal();
+  checkOverlap(); discKey = ""; renderDiscovery(); $("setup").showModal();
 };
 $("addFx").onclick = () => {
   const rows = readRows(), last = rows[rows.length - 1];
@@ -421,6 +444,86 @@ $("saveSetup").onclick = async () => {
   try { await api("/api/config", cfg); config = null; $("setup").close(); await poll(); }
   catch (e) { alert("Erreur : " + e.message); }
 };
+/* ---------- decouverte ---------- */
+function el(tag, attrs, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) if (k === "onclick") e.onclick = v; else e.setAttribute(k, v);
+  for (const k of kids) if (k != null) e.append(k);
+  return e;
+}
+function broadcastOf(ip) {
+  const p = ip.split(".");
+  return (p[0] === "2" || p[0] === "10") ? `${p[0]}.255.255.255` : `${p[0]}.${p[1]}.${p[2]}.255`;
+}
+function alreadyPatched(d) {
+  return readRows().some(f => f.universe === d.universe && f.address === d.address);
+}
+function addDevice(d) {
+  if (alreadyPatched(d)) return;
+  $("fxRows").appendChild(fxRow({ name: d.label || d.model || ("Spot " + d.address), universe: d.universe, address: d.address, layout: d.layout }));
+  checkOverlap(); renderDiscovery();
+}
+let discKey = "";
+function renderDiscovery() {
+  const d = window.discovery; if (!d) return;
+  $("discover").disabled = d.running;
+  $("discover").textContent = d.running ? "Recherche…" : (d.nodes.length ? "Relancer la découverte" : "Lancer la découverte");
+  $("discPhase").textContent = d.phase || "";
+  $("discError").textContent = d.error || "";
+  const key = JSON.stringify([d.nodes, d.devices, readRows().map(f => [f.universe, f.address])]);
+  if (key === discKey) return;
+  discKey = key;
+
+  const nodes = $("discNodes"); nodes.innerHTML = "";
+  if (d.nodes.length) {
+    const tb = el("tbody");
+    for (const n of d.nodes) {
+      tb.append(el("tr", {},
+        el("td", {}, n.ip),
+        el("td", {}, n.short_name || "—", n.style ? el("span", { class: "tag" }, "console") : null),
+        el("td", { class: "muted" }, n.universes.length ? "Univers " + n.universes.join(", ") : "aucune sortie"),
+        el("td", { class: "muted" }, n.rdm ? "RDM ✓" : "RDM ?"),
+        el("td", {}, el("button", { onclick: () => { $("cfgTarget").value = n.ip; } }, "Utiliser cette IP"))));
+    }
+    const bc = broadcastOf(d.nodes[0].ip);
+    nodes.append(el("div", { class: "disc" },
+      el("h3", {}, `Nodes Art-Net (${d.nodes.length})`),
+      el("div", { class: "tablewrap" }, el("table", {}, tb)),
+      el("div", { class: "toolbar", style: "margin:8px 0 0" },
+        el("button", { onclick: () => { $("cfgTarget").value = bc; } }, `Envoyer à tous (${bc})`),
+        el("span", { class: "hint" }, "Plusieurs nodes : choisis le broadcast. Un seul : son IP suffit."))));
+  }
+
+  const devs = $("discDevices"); devs.innerHTML = "";
+  if (d.devices.length) {
+    const tb = el("tbody"), usable = d.devices.filter(x => x.address && x.footprint);
+    for (const x of d.devices) {
+      const name = [x.label, [x.manufacturer, x.model].filter(Boolean).join(" ")].filter(Boolean).join(" — ") || x.uid;
+      let action;
+      if (x.error || !x.address) action = el("span", { class: "muted" }, x.error || "pas d'adresse DMX");
+      else if (alreadyPatched(x)) action = el("span", { class: "muted" }, "déjà dans la liste");
+      else action = el("button", { onclick: () => addDevice(x) }, "Ajouter");
+      tb.append(el("tr", {},
+        el("td", {}, "U" + x.universe),
+        el("td", {}, x.address ? String(x.address) : "—"),
+        el("td", {}, name),
+        el("td", { class: "muted" }, x.personality_name || (x.footprint ? x.footprint + " canaux" : "")),
+        el("td", {}, x.layout || "", x.layout && !x.layout_sure ? el("span", { class: "tag warn-tag", title: "Le projecteur ne décrit pas ses canaux : ordre deviné d'après leur nombre" }, "à vérifier") : null),
+        el("td", {}, action)));
+    }
+    const todo = usable.filter(x => !alreadyPatched(x));
+    devs.append(el("div", { class: "disc" },
+      el("h3", {}, `Projecteurs RDM (${d.devices.length})`),
+      el("div", { class: "tablewrap" }, el("table", {}, tb)),
+      todo.length > 1 ? el("div", { class: "toolbar", style: "margin:8px 0 0" },
+        el("button", { onclick: () => todo.forEach(addDevice) }, `Tout ajouter (${todo.length})`)) : null));
+  }
+}
+$("discover").onclick = async () => {
+  try { await api("/api/discover", {}); discKey = ""; await poll(); }
+  catch (e) { $("discError").textContent = "Erreur : " + e.message; }
+};
+
 const sendRaw = () => { $("rawOut").textContent = $("rawVal").value;
   queue({ raw: { universe: +$("rawUni").value || 0, address: Math.max(1, Math.min(512, +$("rawAddr").value || 1)), value: +$("rawVal").value } }); };
 ["rawUni", "rawAddr", "rawVal"].forEach(id => $(id).oninput = sendRaw);

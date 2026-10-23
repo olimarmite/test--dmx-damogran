@@ -21,6 +21,17 @@ Si `Lancer.bat` est bloqué : ouvrir PowerShell dans le dossier et taper
 Ces lanceurs utilisent le Python portable officiel fourni dans le dossier `python\` (Python 3.12.7 embeddable de python.org, signature vérifiée) : rien à installer.
 Même interface, mêmes réglages.
 
+## Découverte automatique
+
+Dans **Réglages > Découverte automatique** (MagicQ fermé) :
+
+- **Nodes Art-Net** (ArtPoll) : IP, nom et univers de sortie de chaque node. Un clic remplit l'IP de destination
+  (l'IP du node, ou le broadcast s'il y a plusieurs nodes).
+- **Projecteurs** (RDM via Art-Net) : adresse DMX, modèle, mode et ordre des canaux, puis **Ajouter** / **Tout ajouter**.
+  Ne marche que si le node *et* les projecteurs gèrent le RDM. Un ordre de canaux marqué « à vérifier » a été deviné
+  d'après le nombre de canaux, parce que le projecteur ne le décrit pas lui-même : contrôle-le avec **Identifier**.
+- Si rien ne répond en RDM : saisie manuelle à partir du Patch de MagicQ (ci-dessous).
+
 ## Avant de couper MagicQ, relever dans MagicQ
 
 - **Patch** : pour chaque spot, univers, adresse DMX et mode/ordre des canaux.

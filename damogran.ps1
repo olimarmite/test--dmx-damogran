@@ -1,4 +1,4 @@
-# Damogran - version PowerShell (aucune installation, aucun droit admin).
+﻿# Damogran - version PowerShell (aucune installation, aucun droit admin).
 # Meme interface (ui.html) et memes fichiers config.json / state.json que damogran.py.
 # Compatible Windows PowerShell 5.1 (inclus dans Windows) et PowerShell 7.
 #
@@ -94,10 +94,22 @@ function Get-Udp {
     $bind = [string]$Config.bind_ip
     if ($null -eq $script:Udp -or $script:UdpBind -ne $bind) {
         if ($script:Udp) { $script:Udp.Close() }
-        if ($bind) {
-            $u = New-Object System.Net.Sockets.UdpClient (New-Object System.Net.IPEndPoint ([System.Net.IPAddress]::Parse($bind)), 0)
-        } else {
+        $ipa = [System.Net.IPAddress]::Any
+        if ($bind) { $ipa = [System.Net.IPAddress]::Parse($bind) }
+        # Art-Net : on ecoute sur 6454 pour recevoir les reponses des nodes (ArtPollReply, RDM)
+        $u = $null
+        foreach ($p in 6454, 0) {
             $u = New-Object System.Net.Sockets.UdpClient
+            $u.Client.SetSocketOption([System.Net.Sockets.SocketOptionLevel]::Socket, [System.Net.Sockets.SocketOptionName]::ReuseAddress, $true)
+            try { [void]$u.Client.IOControl(-1744830452, [byte[]](0, 0, 0, 0), $null) } catch { }   # Windows : SIO_UDP_CONNRESET off
+            try {
+                $u.Client.Bind((New-Object System.Net.IPEndPoint $ipa, $p))
+                $script:RxOk = ($p -eq 6454)
+                break
+            } catch {
+                $u.Close()
+                if ($p -eq 0) { throw }
+            }
         }
         $u.EnableBroadcast = $true
         $script:Udp = $u
@@ -182,9 +194,331 @@ function Send-Frame {
     }
 }
 
+# ---- decouverte : ArtPoll (nodes) + RDM via Art-Net (projecteurs) -------------
+# Identifiants de slot RDM (E1.20 table C-2) -> lettre de canal Damogran
+$SlotTokens = @{ 0x0001 = 'D'; 0x0002 = 'D'; 0x0205 = 'R'; 0x0206 = 'G'; 0x0207 = 'B'; 0x0211 = 'A'; 0x0212 = 'W'; 0x0213 = 'W'; 0x0214 = 'W' }
+$Clock = [System.Diagnostics.Stopwatch]::StartNew()
+$RxOk = $false
+$Tn = 0
+$rnd = New-Object byte[] 4
+(New-Object System.Random).NextBytes($rnd)
+$SrcUid = [byte[]](@(0x7F, 0xF0) + $rnd)   # plage "prototype" ESTA
+
+function Get-Now { return $Clock.Elapsed.TotalSeconds }
+
+function New-Packet([int]$op) {
+    $l = New-Object 'System.Collections.Generic.List[byte]'
+    $l.AddRange([System.Text.Encoding]::ASCII.GetBytes("Art-Net"))
+    $l.AddRange([byte[]](0, ($op -band 0xFF), ($op -shr 8), 0, 14))
+    return , $l
+}
+
+function Get-Ascii([byte[]]$d, [int]$off, [int]$len) {
+    if ($off -ge $d.Length -or $len -le 0) { return '' }
+    $len = [Math]::Min($len, $d.Length - $off)
+    $s = [System.Text.Encoding]::ASCII.GetString($d, $off, $len)
+    $i = $s.IndexOf([char]0)
+    if ($i -ge 0) { $s = $s.Substring(0, $i) }
+    return $s.Trim()
+}
+
+function Get-U16([byte[]]$d, [int]$i) { return ([int]$d[$i] -shl 8) -bor [int]$d[$i + 1] }
+
+function Get-Hex([byte[]]$d, [int]$off) { return ([BitConverter]::ToString($d, $off, 6) -replace '-', '') }
+
+# Requete RDM GET sans le start code 0xCC (comme l'attend ArtRdm), checksum inclus
+function New-RdmGet([byte[]]$dest, [int]$tn, [int]$pidv, [byte[]]$pd) {
+    $m = New-Object 'System.Collections.Generic.List[byte]'
+    $m.AddRange([byte[]](0xCC, 0x01, (24 + $pd.Length)))
+    $m.AddRange($dest)
+    $m.AddRange($SrcUid)
+    $m.AddRange([byte[]]($tn, 1, 0, 0, 0, 0x20, ($pidv -shr 8), ($pidv -band 0xFF), $pd.Length))
+    if ($pd.Length) { $m.AddRange($pd) }
+    $sum = 0
+    foreach ($b in $m) { $sum += $b }
+    $m.RemoveAt(0)
+    $m.Add([byte](($sum -shr 8) -band 0xFF))
+    $m.Add([byte]($sum -band 0xFF))
+    return , $m.ToArray()
+}
+
+function Send-To([byte[]]$pkt, [string]$ip) {
+    try {
+        $ep = New-Object System.Net.IPEndPoint ([System.Net.IPAddress]::Parse($ip)), ([int]$Config.port)
+        [void](Get-Udp).Send($pkt, $pkt.Length, $ep)
+    } catch { }   # destination de broadcast injoignable sur ce PC : on ignore
+}
+
+function Get-BroadcastTargets {
+    $out = New-Object System.Collections.ArrayList
+    $list = @([string]$Config.target_ip, '255.255.255.255', '2.255.255.255', '10.255.255.255')
+    foreach ($ip in $LocalIps) { if (-not $ip.StartsWith('127.')) { $list += ($ip.Substring(0, $ip.LastIndexOf('.')) + '.255') } }
+    foreach ($t in $list) { if ($t -and -not $out.Contains($t)) { [void]$out.Add($t) } }
+    return , $out
+}
+
+function Get-GuessLayout([int]$fp) {
+    if ($fp -le 3) { return ((@('R', 'G', 'B')[0..([Math]::Max($fp, 1) - 1)]) -join ',') }
+    return 'D,R,G,B' + (',0' * ($fp - 4))
+}
+
+function Reset-Discovery {
+    $script:Disc = @{
+        running = $false; phase = ''; error = ''; step = ''; next_at = 0.0; flushed = $false
+        nodes = @{}; devices = @{}; uids = @{}; slots = @{}; defaults = @{}
+        order = (New-Object System.Collections.ArrayList); queue = (New-Object System.Collections.ArrayList); inflight = $null
+    }
+}
+Reset-Discovery
+
+function Start-Discovery {
+    Reset-Discovery
+    if (-not $script:RxOk) { $script:UdpBind = $null }   # MagicQ a peut-etre ete ferme depuis : on retente le port 6454
+    try { [void](Get-Udp) } catch { }
+    if (-not $script:RxOk) {
+        $Disc.error = "Port Art-Net 6454 occupé : ferme MagicQ (ou tout autre logiciel Art-Net) puis relance."
+        return
+    }
+    $Disc.running = $true
+    $Disc.step = 'poll1'
+    $Disc.next_at = Get-Now
+}
+
+function Receive-PollReply([byte[]]$d, [string]$from) {
+    $ip = '{0}.{1}.{2}.{3}' -f $d[10], $d[11], $d[12], $d[13]
+    if ($ip -eq '0.0.0.0') { $ip = $from }
+    if (-not $Disc.nodes.ContainsKey($ip)) {
+        $Disc.nodes[$ip] = @{ ip = $ip; short_name = ''; long_name = ''; universes = (New-Object System.Collections.ArrayList)
+            rdm = $false; style = 0; report = ''; mac = '' }
+    }
+    $n = $Disc.nodes[$ip]
+    $n.short_name = Get-Ascii $d 26 18
+    $n.long_name = Get-Ascii $d 44 64
+    $n.report = Get-Ascii $d 108 64
+    if ($d[23] -band 0x02) { $n.rdm = $true }
+    if ($d.Length -gt 200) { $n.style = [int]$d[200] }
+    if ($d.Length -gt 206) { $n.mac = [BitConverter]::ToString($d, 201, 6) -replace '-', ':' }
+    $net = [int]$d[18] -band 0x7F
+    $sub = [int]$d[19] -band 0x0F
+    for ($i = 0; $i -lt [Math]::Min([int]$d[173], 4); $i++) {
+        if ($d[174 + $i] -band 0x80) {   # port de sortie
+            $uni = ($net -shl 8) -bor ($sub -shl 4) -bor ([int]$d[190 + $i] -band 0x0F)
+            if (-not $n.universes.Contains($uni)) { [void]$n.universes.Add($uni) }
+        }
+    }
+    $n.universes.Sort()
+}
+
+function Set-RdmData($dev, [string]$hex, [int]$pidv, [byte[]]$pd) {
+    switch ($pidv) {
+        0x0060 {
+            if ($pd.Length -lt 19) { break }
+            $dev.footprint = Get-U16 $pd 10
+            $dev.personality = [int]$pd[12]
+            $dev.personality_count = [int]$pd[13]
+            $dev.address = Get-U16 $pd 14
+            $follow = New-Object System.Collections.ArrayList
+            foreach ($p in 0x0081, 0x0080, 0x0082) { [void]$follow.Add(@{ uid = $hex; pidv = $p; pd = [byte[]]@(); tries = 0 }) }
+            if ($dev.personality) { [void]$follow.Add(@{ uid = $hex; pidv = 0x00E1; pd = [byte[]]@($dev.personality); tries = 0 }) }
+            if ($dev.footprint) {
+                foreach ($p in 0x0120, 0x0121) { [void]$follow.Add(@{ uid = $hex; pidv = $p; pd = [byte[]]@(); tries = 0 }) }
+            }
+            $Disc.queue.InsertRange(0, $follow)
+        }
+        0x0081 { $dev.manufacturer = Get-Ascii $pd 0 $pd.Length }
+        0x0080 { $dev.model = Get-Ascii $pd 0 $pd.Length }
+        0x0082 { $dev.label = Get-Ascii $pd 0 $pd.Length }
+        0x00E1 { if ($pd.Length -ge 3) { $dev.personality_name = Get-Ascii $pd 3 ($pd.Length - 3) } }
+        0x0120 {
+            $slots = @{}
+            for ($i = 0; $i + 5 -le $pd.Length; $i += 5) { $slots[(Get-U16 $pd $i)] = @([int]$pd[$i + 2], (Get-U16 $pd ($i + 3))) }
+            $Disc.slots[$hex] = $slots
+        }
+        0x0121 {
+            $defs = @{}
+            for ($i = 0; $i + 3 -le $pd.Length; $i += 3) { $defs[(Get-U16 $pd $i)] = [int]$pd[$i + 2] }
+            $Disc.defaults[$hex] = $defs
+        }
+    }
+}
+
+function Receive-Rdm([byte[]]$r) {
+    if ($r.Length -gt 1 -and $r[0] -eq 0xCC) { $r = [byte[]]$r[1..($r.Length - 1)] }
+    if ($r.Length -lt 23 -or $r[0] -ne 0x01 -or $r[19] -ne 0x21) { return }
+    $req = $Disc.inflight
+    if ($null -eq $req) { return }
+    $src = Get-Hex $r 8
+    $pidv = Get-U16 $r 20
+    if ($src -ne $req.uid -or $pidv -ne $req.pidv -or [int]$r[14] -ne $req.tn) { return }
+    $Disc.inflight = $null
+    $dev = $Disc.devices[$src]
+    if ($null -eq $dev) { return }
+    if ($r[15] -ne 0) {   # NACK / ACK_TIMER / OVERFLOW : on fait sans
+        if ($pidv -eq 0x0060) { $dev.error = 'Le projecteur refuse la lecture RDM' }
+        return
+    }
+    $pdl = [Math]::Min([int]$r[22], $r.Length - 23)
+    $pd = New-Object byte[] $pdl
+    if ($pdl -gt 0) { [Array]::Copy($r, 23, $pd, 0, $pdl) }
+    Set-RdmData $dev $src $pidv $pd
+}
+
+function Receive-ArtNet([byte[]]$d, [string]$from) {
+    if ($d.Length -lt 12 -or (Get-Ascii $d 0 8) -ne 'Art-Net') { return }
+    $op = [int]$d[8] -bor ([int]$d[9] -shl 8)
+    if ($op -eq 0x2100 -and $d.Length -ge 197) {
+        Receive-PollReply $d $from
+    } elseif ($op -eq 0x8100 -and $d.Length -ge 28) {
+        $uni = (([int]$d[21] -band 0x7F) -shl 8) -bor [int]$d[23]
+        for ($i = 0; $i -lt [int]$d[27]; $i++) {
+            $o = 28 + 6 * $i
+            if ($o + 6 -gt $d.Length) { break }
+            $hex = Get-Hex $d $o
+            if (-not $Disc.devices.ContainsKey($hex)) {
+                $u = New-Object byte[] 6
+                [Array]::Copy($d, $o, $u, 0, 6)
+                $Disc.uids[$hex] = $u
+                [void]$Disc.order.Add($hex)
+                $Disc.devices[$hex] = @{ uid = ($hex.Substring(0, 4) + ':' + $hex.Substring(4)); ip = $from; universe = $uni
+                    manufacturer = ''; model = ''; label = ''; address = 0; footprint = 0; personality = 0; personality_count = 0
+                    personality_name = ''; layout = ''; layout_sure = $false; error = '' }
+            }
+        }
+    } elseif ($op -eq 0x8300 -and $d.Length -gt 24) {
+        $r = New-Object byte[] ($d.Length - 24)
+        [Array]::Copy($d, 24, $r, 0, $r.Length)
+        Receive-Rdm $r
+    }
+}
+
+function Send-ToNodes([int]$op, [int]$cmd) {
+    foreach ($n in $Disc.nodes.Values) {
+        foreach ($uni in $n.universes) {
+            $pkt = New-Packet $op
+            $pkt.AddRange((New-Object byte[] 9))
+            if ($op -eq 0x8000) { $pkt.AddRange([byte[]]((($uni -shr 8) -band 0x7F), $cmd, 1, ($uni -band 0xFF))) }   # ArtTodRequest
+            else { $pkt.AddRange([byte[]]((($uni -shr 8) -band 0x7F), $cmd, ($uni -band 0xFF))) }                     # ArtTodControl
+            Send-To $pkt.ToArray() $n.ip
+        }
+    }
+}
+
+function Get-DeviceLayout($dev, [string]$hex) {
+    $fp = [int]$dev.footprint
+    if (-not $fp) { return @('', $false) }
+    $slots = $Disc.slots[$hex]
+    if ($null -eq $slots -or $slots.Count -eq 0) { return @((Get-GuessLayout $fp), $false) }
+    $defs = $Disc.defaults[$hex]
+    if ($null -eq $defs) { $defs = @{} }
+    $toks = New-Object System.Collections.ArrayList
+    $used = @{}
+    for ($off = 0; $off -lt $fp; $off++) {
+        $tok = $null
+        if ($slots.ContainsKey($off)) {
+            $s = $slots[$off]
+            if ($s[0] -eq 0 -and $SlotTokens.ContainsKey($s[1])) { $tok = $SlotTokens[$s[1]] }
+        }
+        if ($tok -and -not $used.ContainsKey($tok)) {
+            $used[$tok] = $true
+            [void]$toks.Add($tok)
+        } else {
+            $v = 0
+            if ($defs.ContainsKey($off)) { $v = $defs[$off] }
+            [void]$toks.Add([string]$v)
+        }
+    }
+    return @(($toks -join ','), ($used.ContainsKey('R') -and $used.ContainsKey('G') -and $used.ContainsKey('B')))
+}
+
+function Complete-Discovery([string]$err) {
+    foreach ($hex in $Disc.order) {
+        $dev = $Disc.devices[$hex]
+        $res = Get-DeviceLayout $dev $hex
+        $dev.layout = $res[0]
+        $dev.layout_sure = [bool]$res[1]
+    }
+    $Disc.running = $false
+    $Disc.error = $err
+    $Disc.step = ''
+    $Disc.phase = "Terminé : $($Disc.nodes.Count) node(s), $($Disc.devices.Count) projecteur(s) RDM"
+    if ($Disc.nodes.Count -and -not $Disc.devices.Count) { $Disc.phase += ' — pas de RDM ici, saisie manuelle nécessaire' }
+}
+
+# Appele a chaque tour de boucle : fait avancer la decouverte sans bloquer l'Art-Net ni le serveur web
+function Step-Discovery {
+    if (-not $Disc.running) { return }
+    $now = Get-Now
+    $step = $Disc.step
+    if (($step -eq 'poll1' -or $step -eq 'poll2') -and $now -ge $Disc.next_at) {
+        $Disc.phase = 'Recherche des nodes Art-Net…'
+        $pkt = New-Packet 0x2000
+        $pkt.AddRange([byte[]](0, 0))
+        $bytes = $pkt.ToArray()
+        foreach ($ip in (Get-BroadcastTargets)) { Send-To $bytes $ip }
+        if ($step -eq 'poll1') { $Disc.step = 'poll2'; $Disc.next_at = $now + 1.0 }
+        else { $Disc.step = 'tod'; $Disc.next_at = $now + 2.0 }
+    } elseif (($step -eq 'tod' -or $step -eq 'tod2') -and $now -ge $Disc.next_at) {
+        if ($Disc.nodes.Count -eq 0) {
+            Complete-Discovery "Aucun node Art-Net n'a répondu. Vérifie le câble réseau, la carte choisie et que MagicQ est fermé."
+            return
+        }
+        $Disc.phase = 'Recherche RDM des projecteurs…'
+        Send-ToNodes 0x8000 0
+        $Disc.step = 'tod_wait'
+        $Disc.next_at = $now + 2.5
+    } elseif ($step -eq 'tod_wait' -and $now -ge $Disc.next_at) {
+        if ($Disc.devices.Count -eq 0 -and -not $Disc.flushed) {
+            # Certains nodes ne font la decouverte RDM que sur demande : on la force une fois.
+            $Disc.flushed = $true
+            $Disc.phase = 'Relance de la découverte RDM sur les nodes…'
+            Send-ToNodes 0x8200 1
+            $Disc.step = 'tod2'
+            $Disc.next_at = $now + 6.0
+        } else {
+            foreach ($hex in $Disc.order) { [void]$Disc.queue.Add(@{ uid = $hex; pidv = 0x0060; pd = [byte[]]@(); tries = 0 }) }
+            $Disc.step = 'rdm'
+        }
+    } elseif ($step -eq 'rdm') {
+        $req = $Disc.inflight
+        if ($null -ne $req -and ($now - $req.sent) -gt 0.8) {
+            $Disc.inflight = $null
+            if ($req.tries -lt 2) { $Disc.queue.Insert(0, $req) }
+            elseif ($req.pidv -eq 0x0060) { $Disc.devices[$req.uid].error = 'Pas de réponse RDM' }
+        }
+        if ($null -eq $Disc.inflight -and $Disc.queue.Count -gt 0) {
+            $item = $Disc.queue[0]
+            $Disc.queue.RemoveAt(0)
+            $item.tries++
+            $dev = $Disc.devices[$item.uid]
+            $script:Tn = ($script:Tn + 1) % 256
+            $uni = [int]$dev.universe
+            $pkt = New-Packet 0x8300
+            $pkt.AddRange([byte[]](1, 0, 0, 0, 0, 0, 0, 0, 0, (($uni -shr 8) -band 0x7F), 0, ($uni -band 0xFF)))
+            $pkt.AddRange((New-RdmGet $Disc.uids[$item.uid] $script:Tn $item.pidv $item.pd))
+            Send-To $pkt.ToArray() $dev.ip
+            $item.tn = $script:Tn
+            $item.sent = $now
+            $Disc.inflight = $item
+            $done = @($Disc.devices.Values | Where-Object { $_.address -or $_.error }).Count
+            $Disc.phase = "Lecture des projecteurs ($done/$($Disc.devices.Count))…"
+        } elseif ($null -eq $Disc.inflight) {
+            Complete-Discovery ''
+        }
+    }
+}
+
+function Get-DiscoverySnapshot {
+    return @{
+        running = $Disc.running; phase = $Disc.phase; error = $Disc.error
+        nodes = @($Disc.nodes.Values | Sort-Object { $_.ip })
+        devices = @($Disc.devices.Values | Sort-Object { $_.universe }, { $_.address })
+    }
+}
+
 # ---- API ---------------------------------------------------------------------
 function Get-Snapshot {
-    return @{ config = $Config; state = $State; raw = $Raw; error = $LastError; packets = $Packets; local_ips = $LocalIps }
+    return @{ config = $Config; state = $State; raw = $Raw; error = $LastError; packets = $Packets; local_ips = $LocalIps
+        discovery = (Get-DiscoverySnapshot) }
 }
 
 function Is-Number($v) { return ($v -is [ValueType]) -and -not ($v -is [bool]) }
@@ -263,6 +597,9 @@ function Handle-Request($client, [string]$method, [string]$path, [byte[]]$bodyBy
             Send-Response $client 200 ([System.IO.File]::ReadAllBytes($UiPath)) 'text/html; charset=utf-8'
         } elseif ($method -eq 'GET' -and $path -eq '/api/state') {
             Send-Json $client 200 (Get-Snapshot)
+        } elseif ($method -eq 'POST' -and $path -eq '/api/discover') {
+            Start-Discovery
+            Send-Json $client 200 @{ ok = $true }
         } elseif ($method -eq 'POST' -and ($path -eq '/api/state' -or $path -eq '/api/config')) {
             $text = $Utf8.GetString($bodyBytes)
             if (-not $text.Trim()) { $text = '{}' }
@@ -337,6 +674,16 @@ try {
                 $clients.Remove($cl)
             }
         }
+        if ($Udp) {
+            while ($Udp.Available -gt 0) {
+                $remote = New-Object System.Net.IPEndPoint ([System.Net.IPAddress]::Any), 0
+                try { $data = $Udp.Receive([ref]$remote) } catch { break }
+                if ($data.Length -gt 9 -and -not ($data[8] -eq 0 -and $data[9] -eq 0x50)) {   # on ignore l'ArtDmx (y compris le notre)
+                    try { Receive-ArtNet $data $remote.Address.ToString() } catch { }
+                }
+            }
+        }
+        try { Step-Discovery } catch { Complete-Discovery "Erreur pendant la découverte : $($_.Exception.Message)" }
         $now = $watch.Elapsed.TotalMilliseconds
         if ($now -ge $nextFrame) {
             Send-Frame
