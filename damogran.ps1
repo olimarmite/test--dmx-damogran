@@ -14,6 +14,8 @@ $StatePath = Join-Path $Here 'state.json'
 $UiPath = Join-Path $Here 'ui.html'
 $Utf8 = New-Object System.Text.UTF8Encoding $false
 $ChanTokens = @('R', 'G', 'B', 'W', 'A', 'U')
+$FadeKeys = @('dim', 'r', 'g', 'b', 'w', 'a', 'u')   # valeurs fondues lors du rappel d'une memoire
+$SceneKeys = $FadeKeys + @('h', 's')
 
 function Clamp($v, $lo, $hi) { [Math]::Max($lo, [Math]::Min($hi, $v)) }
 
@@ -79,6 +81,11 @@ if (-not $State) { $State = @{} }
 if (-not $State.ContainsKey('master')) { $State.master = 255 }
 if (-not $State.ContainsKey('blackout')) { $State.blackout = $false }
 if (-not ($State.fixtures -is [hashtable])) { $State.fixtures = @{} }
+if (-not ($State.scenes -is [System.Collections.IList])) { $State.scenes = New-Object System.Collections.ArrayList }
+if (-not ($State.scenes -is [System.Collections.ArrayList])) { $State.scenes = [System.Collections.ArrayList]@($State.scenes) }
+if (-not $State.ContainsKey('fade')) { $State.fade = 2.0 }
+if (-not $State.ContainsKey('active_scene')) { $State.active_scene = $null }
+$Fade = $null   # fondu en cours : @{ from; to; t0; dur }
 
 $Raw = $null
 $Identify = @{}
@@ -518,12 +525,17 @@ function Get-DiscoverySnapshot {
 # ---- API ---------------------------------------------------------------------
 function Get-Snapshot {
     return @{ config = $Config; state = $State; raw = $Raw; error = $LastError; packets = $Packets; local_ips = $LocalIps
-        discovery = (Get-DiscoverySnapshot) }
+        discovery = (Get-DiscoverySnapshot); fading = ($null -ne $script:Fade) }
 }
 
 function Is-Number($v) { return ($v -is [ValueType]) -and -not ($v -is [bool]) }
 
 function Patch-State($body) {
+    if ($body.fixtures -is [hashtable] -and $body.fixtures.Count) {
+        # une action manuelle prend la main sur le fondu en cours
+        $script:Fade = $null
+        $State.active_scene = $null
+    }
     if ($body.fixtures -is [hashtable]) {
         foreach ($fid in @($body.fixtures.Keys)) {
             if (-not ($State.fixtures[$fid] -is [hashtable])) { $State.fixtures[$fid] = @{} }
@@ -543,6 +555,86 @@ function Patch-State($body) {
     if ($body.ContainsKey('raw')) { $script:Raw = $body.raw }
     if ($body.identify) {
         foreach ($fid in $body.identify) { $Identify[[string]$fid] = (Get-Date).AddSeconds(2.5) }
+    }
+    $script:Dirty = $true
+}
+
+# ---- memoires ------------------------------------------------------------------
+function Get-Num($h, [string]$k) {
+    if ($h -is [hashtable] -and $h.ContainsKey($k) -and $null -ne $h[$k]) { return [double]$h[$k] }
+    return 0.0
+}
+
+function Start-Fade($target, [double]$dur) {
+    $from = @{}; $to = @{}
+    foreach ($fid in @($target.Keys)) {
+        if (-not ($State.fixtures[$fid] -is [hashtable])) { $State.fixtures[$fid] = @{} }
+        $cur = $State.fixtures[$fid]
+        $v = $target[$fid]
+        $from[$fid] = @{}; $to[$fid] = @{}
+        foreach ($k in $FadeKeys) { $from[$fid][$k] = Get-Num $cur $k; $to[$fid][$k] = Get-Num $v $k }
+        $cur.h = Get-Num $v 'h'   # teinte/saturation : uniquement pour l'affichage, pas de fondu
+        $cur.s = Get-Num $v 's'
+    }
+    $script:Fade = @{ from = $from; to = $to; t0 = (Get-Now); dur = $dur }
+    Step-Fade
+}
+
+function Step-Fade {
+    $f = $script:Fade
+    if ($null -eq $f) { return }
+    $k = 1.0
+    if ($f.dur -gt 0) { $k = [Math]::Min(1.0, ((Get-Now) - $f.t0) / $f.dur) }
+    foreach ($fid in @($f.to.Keys)) {
+        $cur = $State.fixtures[$fid]
+        foreach ($key in $FadeKeys) {
+            $a = $f.from[$fid][$key]
+            $cur[$key] = [Math]::Round($a + ($f.to[$fid][$key] - $a) * $k, 1)
+        }
+    }
+    if ($k -ge 1.0) {
+        $script:Fade = $null
+        $script:Dirty = $true
+    }
+}
+
+function Invoke-SceneAction($body) {
+    $scenes = $State.scenes
+    $sc = $null
+    foreach ($x in $scenes) { if ($x.id -eq [string]$body.id) { $sc = $x } }
+    $name = ([string]$body.name).Trim()
+    if ($name.Length -gt 30) { $name = $name.Substring(0, 30) }
+    $act = [string]$body.action
+    if ($act -eq 'save') {
+        if ($null -eq $sc) {
+            if (-not $name) { $name = "Mémoire $($scenes.Count + 1)" }
+            $sc = @{ id = "s" + [DateTime]::Now.Ticks; name = $name }
+            [void]$scenes.Add($sc)
+        } elseif ($name) { $sc.name = $name }
+        $snap = @{}
+        foreach ($fid in @($State.fixtures.Keys)) {
+            $vals = @{}
+            foreach ($k in $SceneKeys) { if ($State.fixtures[$fid].ContainsKey($k)) { $vals[$k] = $State.fixtures[$fid][$k] } }
+            $snap[$fid] = $vals
+        }
+        $sc.fixtures = $snap
+        $State.active_scene = $sc.id
+    } elseif ($act -eq 'rename' -and $sc -and $name) {
+        $sc.name = $name
+    } elseif ($act -eq 'delete' -and $sc) {
+        $scenes.Remove($sc)
+        if ($State.active_scene -eq $sc.id) { $State.active_scene = $null }
+    } elseif ($act -eq 'recall' -and $sc) {
+        $fade = [double]$State.fade
+        if ($body.ContainsKey('fade')) { $fade = [double]$body.fade }
+        $State.active_scene = $sc.id
+        $target = $sc.fixtures
+        if (-not ($target -is [hashtable])) { $target = @{} }
+        Start-Fade $target (Clamp $fade 0 60)
+    } elseif ($act -eq 'fade') {
+        $State.fade = [double](Clamp ([double]$body.fade) 0 60)
+    } else {
+        throw 'Mémoire introuvable ou action inconnue'
     }
     $script:Dirty = $true
 }
@@ -597,6 +689,10 @@ function Handle-Request($client, [string]$method, [string]$path, [byte[]]$bodyBy
             Send-Response $client 200 ([System.IO.File]::ReadAllBytes($UiPath)) 'text/html; charset=utf-8'
         } elseif ($method -eq 'GET' -and $path -eq '/api/state') {
             Send-Json $client 200 (Get-Snapshot)
+        } elseif ($method -eq 'POST' -and $path -eq '/api/scene') {
+            $text = $Utf8.GetString($bodyBytes)
+            Invoke-SceneAction (ConvertTo-Hash ($text | ConvertFrom-Json))
+            Send-Json $client 200 @{ ok = $true }
         } elseif ($method -eq 'POST' -and $path -eq '/api/discover') {
             Start-Discovery
             Send-Json $client 200 @{ ok = $true }
@@ -686,6 +782,7 @@ try {
         try { Step-Discovery } catch { Complete-Discovery "Erreur pendant la découverte : $($_.Exception.Message)" }
         $now = $watch.Elapsed.TotalMilliseconds
         if ($now -ge $nextFrame) {
+            Step-Fade
             Send-Frame
             $nextFrame = $now + 1000.0 / (Clamp ([int]$Config.fps) 1 44)
         }

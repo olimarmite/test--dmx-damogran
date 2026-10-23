@@ -27,6 +27,8 @@ STATE_PATH = os.path.join(HERE, "state.json")
 UI_PATH = os.path.join(HERE, "ui.html")
 
 COLOR_TOKENS = ("R", "G", "B")
+FADE_KEYS = ("dim", "r", "g", "b", "w", "a", "u")   # valeurs fondues lors du rappel d'une memoire
+SCENE_KEYS = FADE_KEYS + ("h", "s")
 EXTRA_TOKENS = ("W", "A", "U")  # blanc, ambre, UV
 
 DEFAULT_CONFIG = {
@@ -357,6 +359,10 @@ class Engine:
         self.state.setdefault("master", 255)
         self.state.setdefault("blackout", False)
         self.state.setdefault("fixtures", {})
+        self.state.setdefault("scenes", [])
+        self.state.setdefault("fade", 2.0)
+        self.state.setdefault("active_scene", None)
+        self.fade = None         # fondu en cours : {"from", "to", "t0", "dur"}
         self.raw = None          # {"universe", "address", "value"} testeur de canal
         self.identify = {}       # id -> timestamp de fin
         self.sock = None
@@ -454,7 +460,10 @@ class Engine:
                     self.last_error = "Socket: %s" % e
                 if sock:
                     self.discovery.tick(now, self._send_to, target[0])
-                unis = self.build_universes() if now >= next_frame or self.wake.is_set() else None
+                unis = None
+                if now >= next_frame or self.wake.is_set():
+                    self._step_fade(now)
+                    unis = self.build_universes()
             if sock is None:
                 time.sleep(0.5)
                 continue
@@ -499,10 +508,15 @@ class Engine:
         with self.lock:
             return {"config": self.config, "state": self.state, "raw": self.raw,
                     "error": self.last_error, "packets": self.packets,
-                    "local_ips": LOCAL_IPS, "discovery": self.discovery.snapshot()}
+                    "local_ips": LOCAL_IPS, "discovery": self.discovery.snapshot(),
+                    "fading": self.fade is not None}
 
     def patch_state(self, body):
         with self.lock:
+            if body.get("fixtures"):
+                # une action manuelle prend la main sur le fondu en cours
+                self.fade = None
+                self.state["active_scene"] = None
             for fid, vals in (body.get("fixtures") or {}).items():
                 cur = self.state["fixtures"].setdefault(fid, {})
                 for k, v in vals.items():
@@ -516,6 +530,65 @@ class Engine:
                 self.raw = body["raw"] or None
             for fid in body.get("identify") or []:
                 self.identify[fid] = time.time() + 2.5
+            self.dirty = True
+        self.wake.set()
+
+    # ---- memoires -------------------------------------------------------
+    def _start_fade(self, target, dur):
+        fx = self.state["fixtures"]
+        self.fade = {
+            "from": {fid: {k: float(fx.get(fid, {}).get(k, 0)) for k in FADE_KEYS} for fid in target},
+            "to": {fid: {k: float(v.get(k, 0)) for k in FADE_KEYS} for fid, v in target.items()},
+            "t0": time.time(), "dur": dur,
+        }
+        for fid, v in target.items():   # teinte/saturation : uniquement pour l'affichage, pas de fondu
+            cur = fx.setdefault(fid, {})
+            cur["h"], cur["s"] = v.get("h", 0), v.get("s", 0)
+        self._step_fade(time.time())
+
+    def _step_fade(self, now):
+        f = self.fade
+        if not f:
+            return
+        k = 1.0 if f["dur"] <= 0 else min(1.0, (now - f["t0"]) / f["dur"])
+        for fid, to in f["to"].items():
+            cur = self.state["fixtures"].setdefault(fid, {})
+            frm = f["from"][fid]
+            for key in FADE_KEYS:
+                cur[key] = round(frm[key] + (to[key] - frm[key]) * k, 1)
+        if k >= 1.0:
+            self.fade = None
+            self.dirty = True
+
+    def scene_action(self, body):
+        act = body.get("action")
+        with self.lock:
+            scenes = self.state["scenes"]
+            sc = next((x for x in scenes if x["id"] == body.get("id")), None)
+            name = str(body.get("name") or "").strip()[:30]
+            if act == "save":
+                if sc is None:
+                    sc = {"id": "s%d" % int(time.time() * 1000), "name": name or "Mémoire %d" % (len(scenes) + 1)}
+                    scenes.append(sc)
+                elif name:
+                    sc["name"] = name
+                sc["fixtures"] = {fid: {k: v for k, v in vals.items() if k in SCENE_KEYS}
+                                  for fid, vals in self.state["fixtures"].items()}
+                self.state["active_scene"] = sc["id"]
+            elif act == "rename" and sc and name:
+                sc["name"] = name
+            elif act == "delete" and sc:
+                scenes.remove(sc)
+                if self.state["active_scene"] == sc["id"]:
+                    self.state["active_scene"] = None
+            elif act == "recall" and sc:
+                fade = float(body.get("fade", self.state["fade"]))
+                self.state["active_scene"] = sc["id"]
+                self._start_fade(sc.get("fixtures") or {}, max(0.0, min(60.0, fade)))
+            elif act == "fade":
+                self.state["fade"] = max(0.0, min(60.0, float(body.get("fade", 0))))
+            else:
+                raise ValueError("Mémoire introuvable ou action inconnue")
             self.dirty = True
         self.wake.set()
 
@@ -586,6 +659,8 @@ class Handler(BaseHTTPRequestHandler):
                 ENGINE.patch_state(body)
             elif self.path == "/api/config":
                 ENGINE.set_config(body)
+            elif self.path == "/api/scene":
+                ENGINE.scene_action(body)
             elif self.path == "/api/discover":
                 ENGINE.start_discovery()
             else:
