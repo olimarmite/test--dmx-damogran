@@ -182,6 +182,7 @@ $UdpBind = $null
 $InValues = New-Object byte[] 512   # derniere valeur recue de la console, par canal
 $InSeen = -100.0                    # heure du dernier paquet console
 $InSource = ''
+$XBase = @{}                        # transitions manuelles : etat de depart par memoire
 
 # ---- sortie Art-Net ----------------------------------------------------------
 function Get-Udp {
@@ -659,6 +660,8 @@ function Set-ConsoleTarget([string]$target, [int]$v, [int]$old) {
                 }
             }
         }
+    } elseif ($kind -eq 'xfade') {
+        Set-CrossFade $arg $v
     } elseif (($kind -eq 'dim' -or $kind -eq 'white' -or $kind -eq 'hue') -and $targets.Count) {
         $script:Fade = $null
         $State.active_scene = $null
@@ -681,6 +684,43 @@ function Set-ConsoleTarget([string]$target, [int]$v, [int]$old) {
         }
     }
     $script:Dirty = $true
+}
+
+# Fader de transition : 0 = etat de depart (pris quand le fader quitte 0), 100 % = la memoire
+function Set-CrossFade([string]$sceneId, [int]$v) {
+    $sc = $null
+    foreach ($x in $State.scenes) { if ($x.id -eq $sceneId) { $sc = $x } }
+    if ($null -eq $sc) { return }
+    $script:Fade = $null
+    $target = $sc.fixtures
+    if (-not ($target -is [hashtable])) { $target = @{} }
+    $base = $script:XBase[$sceneId]
+    if ($null -eq $base) {
+        $base = @{}
+        foreach ($fid in @($target.Keys)) {
+            $b = @{}
+            foreach ($k in $SceneKeys) { $b[$k] = Get-Num $State.fixtures[$fid] $k }
+            $base[$fid] = $b
+        }
+        $script:XBase[$sceneId] = $base
+    }
+    $f = $v / 255.0
+    foreach ($fid in @($target.Keys)) {
+        if (-not ($State.fixtures[$fid] -is [hashtable])) { $State.fixtures[$fid] = @{} }
+        $cur = $State.fixtures[$fid]
+        $b = $base[$fid]
+        if ($null -eq $b) { $b = @{} }
+        $to = $target[$fid]
+        foreach ($k in $FadeKeys) {
+            $a = Get-Num $b $k
+            $cur[$k] = [Math]::Round($a + ((Get-Num $to $k) - $a) * $f, 1)
+        }
+        $src = $b
+        if ($f -ge 0.5) { $src = $to }   # teinte, saturation, temperature : affichage seulement
+        foreach ($k in 'h', 's', 'k') { $cur[$k] = Get-Num $src $k }
+    }
+    if ($v -eq 255) { $State.active_scene = $sc.id } else { $State.active_scene = $null }
+    if ($v -eq 0) { $script:XBase.Remove($sceneId) }   # revenu au depart : la prochaine montee repart de l'etat du moment
 }
 
 function Set-Input($body) {

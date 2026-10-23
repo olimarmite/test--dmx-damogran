@@ -352,7 +352,7 @@
         <span class="muted" style="font-size:13px" id="inStatus"></span>
       </div>
       <div class="warn" id="inConflict" hidden>Cet univers est aussi celui des projecteurs : choisis-en un autre (par exemple 1), sinon Damogran s'écouterait lui-même.</div>
-      <p class="help">Bouge un fader sur la console : sa colonne s'allume ci-dessous. Choisis alors ce qu'il commande. Un fader n'agit que quand tu le bouges : l'écran garde la main le reste du temps. Blackout et GO se déclenchent quand le fader passe la moitié.</p>
+      <p class="help">Bouge un fader sur la console : sa colonne s'allume ci-dessous. Choisis alors ce qu'il commande. Un fader n'agit que quand tu le bouges : l'écran garde la main le reste du temps. Blackout et GO se déclenchent quand le fader passe la moitié. <b>Transition</b> : le fader passe à la main de l'état actuel (en bas) à la mémoire (en haut), et revient si tu le redescends.</p>
     </div>
     <div class="desk" id="desk"></div>
     <div class="block">
@@ -825,7 +825,7 @@ function targetOptions() {
   const o = [["", "Rien"], ["master", "Master"], ["blackout", "Blackout"], ["dim:all", "Intensité de tous"]];
   for (const fx of readRows().length ? readRows() : config.fixtures) o.push(["dim:" + fx.id, "Intensité " + fx.name]);
   o.push(["white:all", "Blanc chaud/froid"], ["hue:all", "Teinte de tous"]);
-  for (const sc of state.scenes || []) o.push(["scene:" + sc.id, "GO " + sc.name]);
+  for (const sc of state.scenes || []) o.push(["xfade:" + sc.id, "Transition → " + sc.name], ["scene:" + sc.id, "GO " + sc.name]);
   return o;
 }
 function renderDesk() {

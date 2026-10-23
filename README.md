@@ -59,7 +59,8 @@ des faders en Art-Net sur un univers libre, et Damogran l'écoute (**Réglages >
 2. `Patch` : 10 *Generic Dimmer* sur l'univers 2, adresses 1 à 10.
 3. Pour chaque fader *n* : sélectionner le dimmer *n*, 100 %, `Record`, bouton **S** du fader *n*. `Clear`.
 4. Dans Damogran, onglet Console : bouger un fader allume sa colonne, choisir ce qu'il commande
-   (intensité d'un spot ou de tous, blanc chaud/froid, teinte, master, blackout, GO d'une mémoire).
+   (intensité d'un spot ou de tous, blanc chaud/froid, teinte, master, blackout, GO d'une mémoire,
+   ou **transition vers une mémoire** : le fader passe à la main de l'état actuel, en bas, à la mémoire, en haut).
 
 Un fader n'agit que quand on le bouge : à la connexion, Damogran prend la position des faders sans rien changer.
 MagicQ et Damogran tournent alors sur le même PC : c'est à tester avant un spectacle.

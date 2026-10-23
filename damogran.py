@@ -449,6 +449,7 @@ class Engine:
         self.in_values = bytearray(512)   # derniere valeur recue de la console, par canal
         self.in_seen = 0.0                # heure du dernier paquet console
         self.in_source = ""
+        self.xbase = {}                   # transitions manuelles : etat de depart par memoire
 
     # ---- sortie Art-Net -------------------------------------------------
     def _socket(self):
@@ -609,6 +610,8 @@ class Engine:
                 if sc:
                     self.state["active_scene"] = sc["id"]
                     self._start_fade(sc.get("fixtures") or {}, self.state["fade"])
+        elif kind == "xfade":
+            self._xfade(arg, v, old)
         elif kind in ("dim", "white", "hue") and targets:
             self.fade = None
             self.state["active_scene"] = None
@@ -625,6 +628,30 @@ class Engine:
                     cur.update({"h": h, "s": s, "r": r, "g": g, "b": b, "w": 0, "l": 0, "k": 0})
         self.dirty = True
         self.wake.set()
+
+    def _xfade(self, scene_id, v, old):
+        """Fader de transition : 0 = etat de depart (pris quand le fader quitte 0), 100 % = la memoire."""
+        sc = next((x for x in self.state["scenes"] if x["id"] == scene_id), None)
+        if not sc:
+            return
+        self.fade = None
+        target = sc.get("fixtures") or {}
+        fixtures = self.state["fixtures"]
+        base = self.xbase.get(scene_id)
+        if base is None:
+            base = {fid: {k: float(fixtures.get(fid, {}).get(k, 0)) for k in SCENE_KEYS} for fid in target}
+            self.xbase[scene_id] = base
+        f = v / 255.0
+        for fid, to in target.items():
+            cur, b = fixtures.setdefault(fid, {}), base.get(fid, {})
+            for key in FADE_KEYS:
+                cur[key] = round(b.get(key, 0) + (float(to.get(key, 0)) - b.get(key, 0)) * f, 1)
+            src = to if f >= 0.5 else b   # teinte, saturation, temperature : affichage seulement
+            for key in ("h", "s", "k"):
+                cur[key] = src.get(key, 0)
+        self.state["active_scene"] = sc["id"] if v == 255 else None
+        if v == 0:
+            self.xbase.pop(scene_id, None)   # revenu au depart : la prochaine montee repart de l'etat du moment
 
     def set_input(self, body):
         with self.lock:
