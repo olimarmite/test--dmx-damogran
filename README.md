@@ -17,7 +17,9 @@ Rien à installer : la version par défaut utilise PowerShell, présent sur tous
 Si `Lancer.bat` est bloqué : ouvrir PowerShell dans le dossier et taper
 `powershell -ExecutionPolicy Bypass -File .\damogran.ps1`.
 
-Les lanceurs `(Python)` font la même chose avec Python 3, si Python est installé.
+**Plan B : Python portable.** Si PowerShell est bloqué, utiliser `Lancer (Python).bat` (ou `Lancer telephone (Python).bat`).
+Ces lanceurs utilisent le Python portable officiel fourni dans le dossier `python\` (Python 3.12.7 embeddable de python.org, signature vérifiée) : rien à installer.
+Même interface, mêmes réglages.
 
 ## Avant de couper MagicQ, relever dans MagicQ
 
