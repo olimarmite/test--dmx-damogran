@@ -13,8 +13,8 @@ $ConfigPath = Join-Path $Here 'config.json'
 $StatePath = Join-Path $Here 'state.json'
 $UiPath = Join-Path $Here 'ui.html'
 $Utf8 = New-Object System.Text.UTF8Encoding $false
-$ChanTokens = @('R', 'G', 'B', 'W', 'A', 'U')
-$FadeKeys = @('dim', 'r', 'g', 'b', 'w', 'a', 'u')   # valeurs fondues lors du rappel d'une memoire
+$ChanTokens = @('R', 'G', 'B', 'W', 'A', 'U', 'L')
+$FadeKeys = @('dim', 'r', 'g', 'b', 'w', 'a', 'u', 'l')   # valeurs fondues lors du rappel d'une memoire
 $SceneKeys = $FadeKeys + @('h', 's')
 
 function Clamp($v, $lo, $hi) { [Math]::Max($lo, [Math]::Min($hi, $v)) }
