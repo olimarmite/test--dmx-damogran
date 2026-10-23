@@ -412,14 +412,26 @@ function applyRgb(ids, r, g, b, dim) {
   }
   queue({ fixtures: patch }); refreshAll();
 }
+// Blancs pour projecteurs RGB + lime (ETC ColorSource) : le blanc vient surtout du lime,
+// peu de vert et de bleu (l'indigo rosit les peaux). Points de depart a ajuster a l'oeil.
+const LIME_WHITES = [[2700, 255, 180, 0, 10], [3200, 255, 150, 0, 30], [4000, 255, 125, 15, 55], [5600, 255, 80, 60, 140], [6500, 230, 70, 70, 170]];
+function limeWhite(k) {
+  const t = LIME_WHITES;
+  if (k <= t[0][0]) return t[0].slice(1);
+  for (let i = 1; i < t.length; i++) if (k <= t[i][0]) {
+    const f = (k - t[i - 1][0]) / (t[i][0] - t[i - 1][0]);
+    return [1, 2, 3, 4].map(j => Math.round(t[i - 1][j] + (t[i][j] - t[i - 1][j]) * f));
+  }
+  return t[t.length - 1].slice(1);
+}
 // Blanc : on remplace au maximum le melange RGB par les LED blanches / lime du projecteur
 function applyWhite(ids, kelvin) {
   const [r0, g0, b0] = kelvinToRgb(kelvin), [h, s] = rgbToHs(r0, g0, b0), patch = {};
   for (const id of ids) {
     const fx = config.fixtures.find(f => f.id === id), lay = fx ? layoutOf(fx) : [];
     let r = r0, g = g0, b = b0, w = 0, l = 0;
-    if (lay.includes("W")) { w = Math.min(r, g, b); r -= w; g -= w; b -= w; }
-    if (lay.includes("L")) { l = Math.round(0.7 * Math.min(g, r / 0.75)); g -= l; r -= Math.round(0.75 * l); }
+    if (lay.includes("L") && !lay.includes("W")) [l, r, g, b] = limeWhite(kelvin);
+    else if (lay.includes("W")) { w = Math.min(r, g, b); r -= w; g -= w; b -= w; }
     const st = fxState(id), vals = { r, g, b, w, l, h, s };
     if (!st.dim) vals.dim = 255;
     Object.assign(st, vals); patch[id] = vals;
