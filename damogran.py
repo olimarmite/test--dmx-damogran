@@ -27,9 +27,9 @@ STATE_PATH = os.path.join(HERE, "state.json")
 UI_PATH = os.path.join(HERE, "ui.html")
 
 COLOR_TOKENS = ("R", "G", "B")
-FADE_KEYS = ("dim", "r", "g", "b", "w", "a", "u")   # valeurs fondues lors du rappel d'une memoire
+FADE_KEYS = ("dim", "r", "g", "b", "w", "a", "u", "l")   # valeurs fondues lors du rappel d'une memoire
 SCENE_KEYS = FADE_KEYS + ("h", "s")
-EXTRA_TOKENS = ("W", "A", "U")  # blanc, ambre, UV
+EXTRA_TOKENS = ("W", "A", "U", "L")  # blanc, ambre, UV, lime
 
 DEFAULT_CONFIG = {
     "target_ip": "2.255.255.255",
