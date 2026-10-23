@@ -60,6 +60,7 @@
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
   .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
     padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+  body.rawmode .row.hs, body:not(.rawmode) .row.raw { display: none; }
   .card.group { background: var(--panel-2); border-style: dashed; }
   .card.sel { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
   .card-head { display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; }
@@ -155,6 +156,7 @@
   <div class="toolbar">
     <button id="selAll">Tout sélectionner</button>
     <button id="selNone">Aucun</button>
+    <button id="rawMode" title="Afficher les faders Rouge / Vert / Bleu directs au lieu de Teinte / Saturation">Faders RGB bruts</button>
     <span class="hint" id="selHint"></span>
   </div>
   <div class="toolbar">
@@ -361,8 +363,11 @@ function renderGrid() {
         <div class="chk">✓</div>
       </div>
       <div class="row"><span>Dim</span><input type="range" data-k="dim" min="0" max="255" style="--track:linear-gradient(90deg,#222,#fff)"><output></output></div>
-      <div class="row"><span>Teinte</span><input type="range" class="hue" data-k="h" min="0" max="359"><output></output></div>
-      <div class="row"><span>Sat.</span><input type="range" data-k="s" min="0" max="255"><output></output></div>
+      <div class="row hs"><span>Teinte</span><input type="range" class="hue" data-k="h" min="0" max="359"><output></output></div>
+      <div class="row hs"><span>Sat.</span><input type="range" data-k="s" min="0" max="255"><output></output></div>
+      <div class="row raw"><span>R</span><input type="range" data-k="r" min="0" max="255" style="--track:linear-gradient(90deg,#222,#ff3b3b)"><output></output></div>
+      <div class="row raw"><span>G</span><input type="range" data-k="g" min="0" max="255" style="--track:linear-gradient(90deg,#222,#3bff5a)"><output></output></div>
+      <div class="row raw"><span>B</span><input type="range" data-k="b" min="0" max="255" style="--track:linear-gradient(90deg,#222,#3b6bff)"><output></output></div>
       ${Object.keys(EXTRAS).filter(t => lay.includes(t)).map(t =>
         `<div class="row"><span>${t}</span><input type="range" data-k="${t.toLowerCase()}" min="0" max="255" title="${EXTRAS[t]}" style="--track:linear-gradient(90deg,#222,#ccc)"><output></output></div>`).join("")}
       <div class="card-actions">
@@ -391,6 +396,7 @@ function onSlider(id, k, v) {
   for (const t of targets(id)) {
     const st = fxState(t); st[k] = v;
     const p = { [k]: v };
+    if (k === "r" || k === "g" || k === "b") { [st.h, st.s] = rgbToHs(st.r ?? 0, st.g ?? 0, st.b ?? 0); Object.assign(p, { h: st.h, s: st.s }); }
     if (k === "h" || k === "s") { [st.r, st.g, st.b] = hsToRgb(st.h || 0, st.s ?? 0); Object.assign(p, { h: st.h || 0, s: st.s ?? 0, r: st.r, g: st.g, b: st.b }); }
     patch[t] = p;
   }
@@ -476,6 +482,13 @@ $("allFull").onclick = () => setDim(groupIds(), 255);
 $("allHalf").onclick = () => setDim(groupIds(), 128);
 $("allOff").onclick = () => setDim(groupIds(), 0);
 $("selAll").onclick = () => { config.fixtures.forEach(f => selected.add(f.id)); refreshAll(); };
+function setRawMode(on) {
+  document.body.classList.toggle("rawmode", on);
+  $("rawMode").classList.toggle("on", on);
+  try { localStorage.setItem("damogran.raw", on ? "1" : ""); } catch (e) { }
+}
+$("rawMode").onclick = () => setRawMode(!document.body.classList.contains("rawmode"));
+try { if (localStorage.getItem("damogran.raw")) setRawMode(true); } catch (e) { }
 $("selNone").onclick = () => { selected.clear(); refreshAll(); };
 $("master").oninput = e => { state.master = +e.target.value; queue({ master: state.master }); refreshAll(); };
 const toggleBlackout = () => { state.blackout = !state.blackout; queue({ blackout: state.blackout }); refreshAll(); };
