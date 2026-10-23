@@ -10,6 +10,7 @@ Aucune dependance : Python 3.8+ standard uniquement.
 """
 import argparse
 import json
+import math
 import os
 import random
 import select
@@ -28,7 +29,7 @@ UI_PATH = os.path.join(HERE, "ui.html")
 
 COLOR_TOKENS = ("R", "G", "B")
 FADE_KEYS = ("dim", "r", "g", "b", "w", "a", "u", "l")   # valeurs fondues lors du rappel d'une memoire
-SCENE_KEYS = FADE_KEYS + ("h", "s")
+SCENE_KEYS = FADE_KEYS + ("h", "s", "k")   # k : temperature du blanc choisi (affichage)
 EXTRA_TOKENS = ("W", "A", "U", "L")  # blanc, ambre, UV, lime
 
 DEFAULT_CONFIG = {
@@ -42,6 +43,77 @@ DEFAULT_CONFIG = {
         for i in range(6)
     ],
 }
+
+
+# ---- couleurs (memes formules que l'interface) ----------------------------------
+# Blancs pour projecteurs RGB + lime (ETC ColorSource) : le blanc vient surtout du lime,
+# peu de vert et de bleu (l'indigo rosit les peaux). Kelvin, lime, rouge, vert, bleu.
+LIME_WHITES = [(2700, 255, 180, 0, 10), (3200, 255, 150, 0, 30), (4000, 255, 125, 15, 55),
+               (5600, 255, 80, 60, 140), (6500, 230, 70, 70, 170)]
+
+
+def lime_white(k):
+    t = LIME_WHITES
+    if k <= t[0][0]:
+        return list(t[0][1:])
+    for a, b in zip(t, t[1:]):
+        if k <= b[0]:
+            f = (k - a[0]) / float(b[0] - a[0])
+            return [int(round(a[j] + (b[j] - a[j]) * f)) for j in range(1, 5)]
+    return list(t[-1][1:])
+
+
+def kelvin_to_rgb(k):
+    """Approximation de Tanner Helland, pour les projecteurs sans lime."""
+    t = k / 100.0
+    r = 255 if t <= 66 else 329.698727446 * (t - 60) ** -0.1332047592
+    g = 99.4708025861 * math.log(t) - 161.1195681661 if t <= 66 else 288.1221695283 * (t - 60) ** -0.0755148492
+    b = 255 if t >= 66 else (0 if t <= 19 else 138.5177312231 * math.log(t - 10) - 305.0447927307)
+    return [int(round(max(0, min(255, v)))) for v in (r, g, b)]
+
+
+def hs_to_rgb(h, s):
+    s /= 255.0
+
+    def f(n):
+        k = (n + h / 60.0) % 6
+        return int(round(255 * (1 - s * max(0, min(k, 4 - k, 1)))))
+    return [f(5), f(3), f(1)]
+
+
+def rgb_to_hs(r, g, b):
+    mx, mn = max(r, g, b), min(r, g, b)
+    d = mx - mn
+    h = 0.0
+    if d:
+        if mx == r:
+            h = 60 * (((g - b) / d) % 6)
+        elif mx == g:
+            h = 60 * ((b - r) / d + 2)
+        else:
+            h = 60 * ((r - g) / d + 4)
+    return int(round(h % 360)), int(round(255 * d / mx)) if mx else 0
+
+
+def white_values(layout, k):
+    """Valeurs r,g,b,w,l pour un blanc a k kelvins, selon les canaux du projecteur."""
+    toks = parse_layout(layout)
+    r, g, b = kelvin_to_rgb(k)
+    h, s = rgb_to_hs(r, g, b)
+    w = l = 0
+    if "L" in toks and "W" not in toks:
+        l, r, g, b = lime_white(k)
+    elif "W" in toks:
+        w = min(r, g, b)
+        r, g, b = r - w, g - w, b - w
+    return {"r": r, "g": g, "b": b, "w": w, "l": l, "h": h, "s": s, "k": int(round(k / 50.0)) * 50}
+
+
+def default_input(fixtures):
+    """Correspondance proposee pour la Mini Connect : faders 1-8 = spots, 9 = blanc, 10 = master."""
+    m = {str(i + 1): "dim:" + fx["id"] for i, fx in enumerate(fixtures[:8])}
+    m["9"], m["10"] = "white:all", "master"
+    return {"enabled": True, "universe": 1, "map": m}
 
 
 def load_json(path, default):
@@ -373,6 +445,10 @@ class Engine:
         self.wake = threading.Event()
         self.rx_ok = False       # True si on ecoute bien le port Art-Net (necessaire a la decouverte)
         self.discovery = Discovery()
+        self.config.setdefault("input", default_input(self.config["fixtures"]))
+        self.in_values = bytearray(512)   # derniere valeur recue de la console, par canal
+        self.in_seen = 0.0                # heure du dernier paquet console
+        self.in_source = ""
 
     # ---- sortie Art-Net -------------------------------------------------
     def _socket(self):
@@ -487,9 +563,81 @@ class Engine:
                     data, addr = sock.recvfrom(2048)
                 except OSError:
                     break
-                if data[8:10] != b"\x00\x50":  # on ignore l'ArtDmx (y compris le notre)
-                    with self.lock:
+                with self.lock:
+                    if data[8:10] == b"\x00\x50":   # ArtDmx : peut-etre la console
+                        self._console_packet(data, addr)
+                    else:
                         self.discovery.on_packet(data, addr, time.time())
+
+    # ---- entree console (Art-Net venant de MagicQ / Mini Connect) --------
+    def _output_universes(self):
+        return {int(fx.get("universe", 0)) for fx in self.config["fixtures"]}
+
+    def _console_packet(self, data, addr):
+        inp = self.config.get("input") or {}
+        if len(data) < 18 or not inp.get("enabled"):
+            return
+        uni = data[14] | ((data[15] & 0x7F) << 8)
+        # l'univers de la console doit etre different de ceux des projecteurs (sinon c'est notre propre sortie)
+        if uni != int(inp.get("universe", 1)) or uni in self._output_universes():
+            return
+        n = min(512, (data[16] << 8) | data[17], len(data) - 18)
+        dmx = data[18:18 + n]
+        now = time.time()
+        fresh = now - self.in_seen > 3.0   # console (re)connectee : on prend les positions sans rien appliquer
+        if not fresh:
+            for ch_s, target in (inp.get("map") or {}).items():
+                ch = int(ch_s) - 1
+                if 0 <= ch < n and dmx[ch] != self.in_values[ch]:
+                    self._apply_target(str(target), dmx[ch], self.in_values[ch])
+        self.in_values[:n] = dmx
+        self.in_seen, self.in_source = now, addr[0]
+
+    def _apply_target(self, target, v, old):
+        kind, _, arg = target.partition(":")
+        fx_ids = [fx["id"] for fx in self.config["fixtures"]]
+        targets = fx_ids if arg == "all" else [arg] if arg in fx_ids else []
+        fixtures = self.state["fixtures"]
+        if kind == "master":
+            self.state["master"] = v
+        elif kind == "blackout":
+            if (v >= 128) != (old >= 128):
+                self.state["blackout"] = v >= 128
+        elif kind == "scene":
+            if v >= 128 > old:   # le fader passe la moitie en montant : GO
+                sc = next((x for x in self.state["scenes"] if x["id"] == arg), None)
+                if sc:
+                    self.state["active_scene"] = sc["id"]
+                    self._start_fade(sc.get("fixtures") or {}, self.state["fade"])
+        elif kind in ("dim", "white", "hue") and targets:
+            self.fade = None
+            self.state["active_scene"] = None
+            for fid in targets:
+                cur = fixtures.setdefault(fid, {})
+                if kind == "dim":
+                    cur["dim"] = v
+                elif kind == "white":
+                    fx = next(f for f in self.config["fixtures"] if f["id"] == fid)
+                    cur.update(white_values(fx.get("layout", ""), 2700 + v * 3800 / 255.0))
+                else:
+                    h, s = int(round(v * 359 / 255.0)), cur.get("s") or 255
+                    r, g, b = hs_to_rgb(h, s)
+                    cur.update({"h": h, "s": s, "r": r, "g": g, "b": b, "w": 0, "l": 0, "k": 0})
+        self.dirty = True
+        self.wake.set()
+
+    def set_input(self, body):
+        with self.lock:
+            inp = self.config.get("input") or {}
+            if "enabled" in body:
+                inp["enabled"] = bool(body["enabled"])
+            if "universe" in body:
+                inp["universe"] = max(0, min(32767, int(body["universe"])))
+            if "map" in body:
+                inp["map"] = {str(int(k)): str(v) for k, v in (body["map"] or {}).items()
+                              if 1 <= int(k) <= 512 and v}
+            self.config["input"] = inp
+            save_json(CONFIG_PATH, self.config)
 
     # ---- persistance ----------------------------------------------------
     def saver(self):
@@ -509,7 +657,10 @@ class Engine:
             return {"config": self.config, "state": self.state, "raw": self.raw,
                     "error": self.last_error, "packets": self.packets,
                     "local_ips": LOCAL_IPS, "discovery": self.discovery.snapshot(),
-                    "fading": self.fade is not None}
+                    "fading": self.fade is not None,
+                    "input": {"values": list(self.in_values[:24]), "source": self.in_source,
+                              "seen": round(time.time() - self.in_seen, 1) if self.in_seen else None,
+                              "conflict": int((self.config.get("input") or {}).get("universe", 1)) in self._output_universes()}}
 
     def patch_state(self, body):
         with self.lock:
@@ -521,7 +672,7 @@ class Engine:
                 cur = self.state["fixtures"].setdefault(fid, {})
                 for k, v in vals.items():
                     if isinstance(v, (int, float)):
-                        cur[k] = max(0, min(360 if k == "h" else 255, v))
+                        cur[k] = max(0, min({"h": 360, "k": 20000}.get(k, 255), v))
             if "master" in body:
                 self.state["master"] = max(0, min(255, int(body["master"])))
             if "blackout" in body:
@@ -619,6 +770,7 @@ class Engine:
                 "port": int(cfg.get("port") or 6454),
                 "fps": int(cfg.get("fps") or 30),
                 "fixtures": fixtures,
+                "input": self.config.get("input") or default_input(fixtures),
             }
             self.sock_key = None
             save_json(CONFIG_PATH, self.config)
@@ -659,6 +811,8 @@ class Handler(BaseHTTPRequestHandler):
                 ENGINE.patch_state(body)
             elif self.path == "/api/config":
                 ENGINE.set_config(body)
+            elif self.path == "/api/input":
+                ENGINE.set_input(body)
             elif self.path == "/api/scene":
                 ENGINE.scene_action(body)
             elif self.path == "/api/discover":
