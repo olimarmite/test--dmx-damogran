@@ -46,3 +46,11 @@ Le bouton **Identifier** fait clignoter un spot ; le **testeur de canal** permet
 - Cliquer sur le nom d'un spot pour le sélectionner ; avec une sélection, tout réglage s'applique à tous les sélectionnés.
 - Sans sélection, les pastilles de couleur et les boutons Dim agissent sur tous les spots.
 - **Master**, **Blackout** (touche `B`). L'état est mémorisé et restauré au redémarrage.
+
+## Mémoires (scènes)
+
+- Régler les projecteurs, puis **+ Mémoriser l'état actuel** et donner un nom.
+- Clic sur une mémoire (ou touches **1** à **9**) pour la rappeler, avec le **fondu** choisi (0 s = cut, jusqu'à 10 s).
+- **⋯** sur une mémoire : renommer, écraser avec l'état actuel, supprimer.
+- La mémoire rappelée est encadrée ; toucher un réglage la désélectionne (et interrompt un fondu en cours).
+- Master et Blackout restent indépendants des mémoires. Les mémoires sont gardées dans `state.json`.

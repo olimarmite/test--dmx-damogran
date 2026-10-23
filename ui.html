@@ -40,6 +40,21 @@
   .sw { width: 38px; height: 38px; border-radius: 8px; border: 2px solid transparent; padding: 0; }
   .sw:hover { border-color: #fff8; }
 
+  .scenes { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; margin-bottom: 12px; }
+  .scenes-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 8px; }
+  .scenes-head .label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .scenes-head label { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .scenes-head select { width: auto; }
+  .scene-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  .scene { display: flex; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2); overflow: hidden; }
+  .scene.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+  .scene .go { flex: 1; border: 0; border-radius: 0; background: transparent; text-align: left; padding: 10px 12px; min-height: 52px; }
+  .scene .go small { display: block; color: var(--muted); font-size: 11px; }
+  .scene .edit { border: 0; border-left: 1px solid var(--line); border-radius: 0; background: transparent; padding: 0 10px; color: var(--muted); }
+  .scene .dots { display: flex; gap: 3px; margin-top: 4px; }
+  .scene .dots i { width: 10px; height: 10px; border-radius: 50%; border: 1px solid #0008; }
+  .empty { font-size: 13px; color: var(--muted); }
+  #sceneDlg { width: min(420px, calc(100vw - 32px)); }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
   .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
     padding: 12px; display: flex; flex-direction: column; gap: 10px; }
@@ -119,6 +134,21 @@
 </header>
 
 <main>
+  <section class="scenes">
+    <div class="scenes-head">
+      <span class="label">Mémoires</span>
+      <label>Fondu
+        <select id="fadeSel">
+          <option value="0">0 s (cut)</option><option value="1">1 s</option><option value="2">2 s</option>
+          <option value="3">3 s</option><option value="5">5 s</option><option value="10">10 s</option>
+        </select>
+      </label>
+      <span class="spacer"></span>
+      <button class="on" id="sceneNew">+ Mémoriser l'état actuel</button>
+    </div>
+    <div class="scene-list" id="sceneList"></div>
+  </section>
+
   <div class="toolbar">
     <button id="selAll">Tout sélectionner</button>
     <button id="selNone">Aucun</button>
@@ -132,6 +162,14 @@
   </div>
   <div class="grid" id="grid"></div>
 </main>
+
+<dialog id="sceneDlg">
+  <div class="dlg-head"><h2 id="sceneDlgTitle">Mémoire</h2></div>
+  <div class="dlg-body">
+    <label class="lbl">Nom <input type="text" id="sceneName" maxlength="30"></label>
+    <div class="toolbar" id="sceneDlgBtns" style="margin:0"></div>
+  </div>
+</dialog>
 
 <dialog id="setup">
   <div class="dlg-head">
@@ -259,7 +297,10 @@ async function flush() {
   const body = pending; pending = {};
   try { await api("/api/state", body); } catch (e) { setStatus(false, "Erreur : " + e.message); }
 }
+let pollTimer = null;
 async function poll() {
+  clearTimeout(pollTimer);
+  let fast = false;
   try {
     const snap = await api("/api/state");
     const cfgChanged = JSON.stringify(snap.config) !== JSON.stringify(config);
@@ -268,11 +309,15 @@ async function poll() {
     else refreshAll();
     window.localIps = snap.local_ips;
     window.discovery = snap.discovery;
+    fast = snap.fading;
+    for (const k of ["scenes", "active_scene", "fade"]) state[k] = snap.state[k];   // toujours a jour, meme pendant une edition
+    renderScenes();
     if ($("setup").open) renderDiscovery();
     if (snap.error) setStatus(false, snap.error);
     else setStatus(snap.packets !== lastPackets, `Art-Net → ${config.target_ip}`);
     lastPackets = snap.packets;
   } catch (e) { setStatus(false, "Serveur injoignable — damogran.py est-il lancé ?"); }
+  pollTimer = setTimeout(poll, fast ? 150 : 1000);   // plus rapide pendant un fondu
 }
 function setStatus(ok, txt) { $("dot").className = "dot " + (ok ? "ok" : "err"); $("statusText").textContent = txt; }
 
@@ -384,7 +429,11 @@ $("master").oninput = e => { state.master = +e.target.value; queue({ master: sta
 const toggleBlackout = () => { state.blackout = !state.blackout; queue({ blackout: state.blackout }); refreshAll(); };
 $("blackout").onclick = toggleBlackout;
 document.addEventListener("keydown", e => {
-  if (e.target.matches("input[type=text],input[type=number],select") || $("setup").open) return;
+  if (e.target.matches("input[type=text],input[type=number],select") || $("setup").open || $("sceneDlg").open) return;
+  if (/^[1-9]$/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    const sc = (state.scenes || [])[+e.key - 1];
+    if (sc) recallScene(sc.id);
+  }
   if (e.key === "b" || e.key === "B") toggleBlackout();
   if (e.key === "Escape") { selected.clear(); refreshAll(); }
 });
@@ -444,6 +493,59 @@ $("saveSetup").onclick = async () => {
   try { await api("/api/config", cfg); config = null; $("setup").close(); await poll(); }
   catch (e) { alert("Erreur : " + e.message); }
 };
+/* ---------- memoires ---------- */
+let scenesKey = "";
+function sceneApi(body) { return api("/api/scene", body).then(poll).catch(e => alert("Erreur : " + e.message)); }
+function renderScenes() {
+  const scenes = state.scenes || [];
+  const fadeSel = $("fadeSel");
+  if (document.activeElement !== fadeSel) fadeSel.value = String(state.fade ?? 2);
+  const key = JSON.stringify([scenes.map(s => [s.id, s.name, s.fixtures]), state.active_scene, config && config.fixtures.map(f => f.id)]);
+  if (key === scenesKey) return;
+  scenesKey = key;
+  const list = $("sceneList"); list.innerHTML = "";
+  if (!scenes.length) {
+    list.append(el("div", { class: "empty" }, "Aucune mémoire. Règle les projecteurs puis « Mémoriser » : tu pourras rappeler la scène d'un clic (ou touches 1 à 9)."));
+    return;
+  }
+  scenes.forEach((sc, i) => {
+    const dots = el("span", { class: "dots" });
+    for (const fx of (config ? config.fixtures : [])) {
+      const v = (sc.fixtures || {})[fx.id];
+      if (!v) continue;
+      const k = (v.dim ?? 0) / 255;
+      const d = el("i"); d.style.background = `rgb(${(v.r ?? 0) * k | 0},${(v.g ?? 0) * k | 0},${(v.b ?? 0) * k | 0})`;
+      dots.append(d);
+    }
+    list.append(el("div", { class: "scene" + (state.active_scene === sc.id ? " active" : "") },
+      el("button", { class: "go", title: "Rappeler (touche " + (i + 1) + ")", onclick: () => recallScene(sc.id) },
+        el("small", {}, i < 9 ? String(i + 1) : ""), sc.name, dots),
+      el("button", { class: "edit", title: "Renommer, écraser, supprimer", onclick: () => openSceneDlg(sc) }, "⋯")));
+  });
+}
+function recallScene(id) { sceneApi({ action: "recall", id, fade: +$("fadeSel").value }); }
+function openSceneDlg(sc) {
+  const dlg = $("sceneDlg"), btns = $("sceneDlgBtns");
+  $("sceneDlgTitle").textContent = sc ? "Mémoire « " + sc.name + " »" : "Nouvelle mémoire";
+  $("sceneName").value = sc ? sc.name : "Mémoire " + ((state.scenes || []).length + 1);
+  btns.innerHTML = "";
+  const done = body => { dlg.close(); sceneApi(body); };
+  const name = () => $("sceneName").value.trim();
+  if (sc) {
+    btns.append(
+      el("button", { class: "on", onclick: () => done({ action: "rename", id: sc.id, name: name() }) }, "Renommer"),
+      el("button", { onclick: () => done({ action: "save", id: sc.id, name: name() }), title: "Remplace le contenu par l'état actuel des projecteurs" }, "Écraser avec l'état actuel"),
+      el("button", { class: "danger", onclick: () => { if (confirm("Supprimer « " + sc.name + " » ?")) done({ action: "delete", id: sc.id }); } }, "Supprimer"));
+  } else {
+    btns.append(el("button", { class: "on", onclick: () => done({ action: "save", name: name() }) }, "Mémoriser"));
+  }
+  btns.append(el("span", { class: "spacer" }), el("button", { onclick: () => dlg.close() }, "Annuler"));
+  $("sceneName").onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); btns.querySelector("button").click(); } };
+  dlg.showModal(); $("sceneName").select();
+}
+$("sceneNew").onclick = () => openSceneDlg(null);
+$("fadeSel").onchange = e => sceneApi({ action: "fade", fade: +e.target.value });
+
 /* ---------- decouverte ---------- */
 function el(tag, attrs, ...kids) {
   const e = document.createElement(tag);
@@ -529,7 +631,7 @@ const sendRaw = () => { $("rawOut").textContent = $("rawVal").value;
 ["rawUni", "rawAddr", "rawVal"].forEach(id => $(id).oninput = sendRaw);
 $("rawStop").onclick = () => { $("rawVal").value = 0; $("rawOut").textContent = "0"; queue({ raw: null }); };
 
-poll(); setInterval(poll, 1000);
+poll();
 </script>
 </body>
 </html>
