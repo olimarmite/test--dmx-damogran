@@ -5,21 +5,15 @@ Un seul fichier Python, sans dépendance.
 
 ## Démarrage (Windows, sans droits admin)
 
-Rien à installer : la version par défaut utilise PowerShell, présent sur tous les Windows.
+Rien à installer : le dossier contient un Python portable officiel (`python\`, Python 3.12 « embeddable » de python.org).
 
-1. Récupérer le dossier sur le PC (sur GitHub : **Code > Download ZIP**, puis clic droit > *Extraire tout*).
-   Il faut extraire le ZIP : les fichiers ne marchent pas s'ils sont lancés depuis l'intérieur du ZIP.
-2. **Couper la sortie Art-Net de MagicQ** (ou fermer MagicQ) — sinon les deux logiciels envoient en même temps et ça clignote.
-   Dans MagicQ : `Setup > View DMX I/O`, mettre la sortie des univers sur *None*/désactivée.
-3. Double-cliquer sur `Lancer.bat` → une fenêtre noire s'ouvre (la laisser ouverte) et le navigateur s'ouvre sur http://localhost:8080.
-   `Lancer (telephone).bat` rend l'interface accessible depuis un téléphone sur le même réseau (il peut demander une autorisation du pare-feu : si elle est refusée, rester sur le PC).
+1. Récupérer le dossier sur le PC et l'extraire (clic droit > *Extraire tout* : ne pas lancer depuis l'intérieur du ZIP).
+2. **Couper la sortie Art-Net de MagicQ** vers les projecteurs (ou fermer MagicQ), sinon les deux logiciels se battent.
+3. Double-cliquer sur `Lancer.bat` : une fenêtre noire s'ouvre (la laisser ouverte) et le navigateur s'ouvre sur http://localhost:8080.
+   `Lancer (telephone).bat` rend l'interface accessible depuis un téléphone sur le même réseau
+   (il peut demander une autorisation du pare-feu : si elle est refusée, rester sur le PC).
 
-Si `Lancer.bat` est bloqué : ouvrir PowerShell dans le dossier et taper
-`powershell -ExecutionPolicy Bypass -File .\damogran.ps1`.
-
-**Plan B : Python portable.** Si PowerShell est bloqué, utiliser `Lancer (Python).bat` (ou `Lancer telephone (Python).bat`).
-Ces lanceurs utilisent le Python portable officiel fourni dans le dossier `python\` (Python 3.12.7 embeddable de python.org, signature vérifiée) : rien à installer.
-Même interface, mêmes réglages.
+Sur un autre système (macOS, Linux) : `python3 damogran.py`.
 
 ## Découverte automatique
 
