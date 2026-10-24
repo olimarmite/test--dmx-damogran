@@ -109,6 +109,34 @@ def white_values(layout, k):
     return {"r": r, "g": g, "b": b, "w": w, "l": l, "h": h, "s": s, "k": int(round(k / 50.0)) * 50}
 
 
+# ---- effets : calcules a chaque image, ils remplacent l'etat du plateau tant qu'ils tournent ----
+EFFECTS = ("chase", "party", "applause")
+
+
+def _noise(i, seg):
+    x = math.sin(i * 12.9898 + seg * 78.233) * 43758.5453
+    return x - math.floor(x)
+
+
+def effect_values(name, i, n, ph, base, layout):
+    """Valeurs du spot i (sur n) pour l'effet, a la phase ph (secondes x vitesse)."""
+    if name == "chase":   # un spot apres l'autre, dans l'ordre, avec sa couleur
+        p = (ph * 2.0) % n
+        d = abs(i - p)
+        d = min(d, n - d)
+        out = dict(base)
+        if not any(base.get(k) for k in ("r", "g", "b", "l", "w")):
+            out.update(white_values(layout, 3200))
+        out["dim"] = 255 * max(0.0, 1 - d / 1.2)
+        return out
+    if name == "party":   # arc-en-ciel qui tourne sur les spots
+        r, g, b = hs_to_rgb((ph * 36 + i * 360.0 / max(n, 1)) % 360, 255)
+        return {"dim": 255 * (0.8 + 0.2 * math.sin(ph * 4 + i)), "r": r, "g": g, "b": b, "l": 0, "w": 0, "a": 0, "u": 0}
+    out = white_values(layout, 3200)   # applaudissements : blanc chaud qui scintille
+    out["dim"] = 255 * (0.55 + 0.45 * _noise(i, math.floor(ph * 8)))
+    return out
+
+
 def default_input(fixtures):
     """Correspondance proposee pour la Mini Connect : faders 1-8 = spots, 9 = blanc, 10 = master."""
     m = {str(i + 1): "dim:" + fx["id"] for i, fx in enumerate(fixtures[:8])}
@@ -450,6 +478,9 @@ class Engine:
         self.in_seen = 0.0                # heure du dernier paquet console
         self.in_source = ""
         self.xbase = {}                   # transitions manuelles : etat de depart par memoire
+        self.state.setdefault("effect", None)   # {"name", "speed"} ou None
+        self.effect_phase = 0.0
+        self.effect_clock = time.time()
 
     # ---- sortie Art-Net -------------------------------------------------
     def _socket(self):
@@ -484,10 +515,17 @@ class Engine:
         unis = {}
         master = self.state["master"] / 255.0
         blackout = self.state["blackout"]
-        for fx in self.config["fixtures"]:
+        eff = self.state.get("effect")
+        if eff:   # la phase avance avec la vitesse : changer de vitesse ne fait pas sauter l'effet
+            self.effect_phase += (now - self.effect_clock) * float(eff.get("speed", 1.0))
+        self.effect_clock = now
+        n = len(self.config["fixtures"])
+        for idx, fx in enumerate(self.config["fixtures"]):
             uni = int(fx.get("universe", 0))
             buf = unis.setdefault(uni, bytearray(512))
             st = self.state["fixtures"].get(fx["id"], {})
+            if eff:
+                st = effect_values(eff["name"], idx, n, self.effect_phase, st, fx.get("layout", ""))
             layout = parse_layout(fx.get("layout", "D,R,G,B"))
             has_dim = "D" in layout
             dim = st.get("dim", 0) / 255.0 * master
@@ -612,6 +650,15 @@ class Engine:
                     self._start_fade(sc.get("fixtures") or {}, self.state["fade"])
         elif kind == "xfade":
             self._xfade(arg, v, old)
+        elif kind == "fx":   # au-dela de la moitie : l'effet tourne ; en dessous : il s'arrete
+            if v >= 128 > old:
+                self._set_effect({"name": arg, "speed": (self.state.get("effect") or {}).get("speed", 1.0)})
+            elif old >= 128 > v and (self.state.get("effect") or {}).get("name") == arg:
+                self._set_effect(None)
+        elif kind == "fxspeed":
+            self.state["speed"] = round(0.25 + v * 2.75 / 255, 2)
+            if self.state.get("effect"):
+                self.state["effect"]["speed"] = self.state["speed"]
         elif kind in ("dim", "white", "hue") and targets:
             self.fade = None
             self.state["active_scene"] = None
@@ -629,12 +676,22 @@ class Engine:
         self.dirty = True
         self.wake.set()
 
+    def _set_effect(self, eff):
+        if not eff or eff.get("name") not in EFFECTS:
+            self.state["effect"] = None
+            return
+        cur = self.state.get("effect") or {}
+        if cur.get("name") != eff["name"]:
+            self.effect_phase = 0.0
+        self.state["effect"] = {"name": eff["name"], "speed": max(0.25, min(3.0, float(eff.get("speed", 1.0))))}
+
     def _xfade(self, scene_id, v, old):
         """Fader de transition : 0 = etat de depart (pris quand le fader quitte 0), 100 % = la memoire."""
         sc = next((x for x in self.state["scenes"] if x["id"] == scene_id), None)
         if not sc:
             return
         self.fade = None
+        self.state["effect"] = None
         target = sc.get("fixtures") or {}
         fixtures = self.state["fixtures"]
         base = self.xbase.get(scene_id)
@@ -684,7 +741,7 @@ class Engine:
             return {"config": self.config, "state": self.state, "raw": self.raw,
                     "error": self.last_error, "packets": self.packets,
                     "local_ips": LOCAL_IPS, "discovery": self.discovery.snapshot(),
-                    "fading": self.fade is not None,
+                    "fading": self.fade is not None, "effect_phase": round(self.effect_phase, 3),
                     "input": {"values": list(self.in_values[:24]), "source": self.in_source,
                               "seen": round(time.time() - self.in_seen, 1) if self.in_seen else None,
                               "conflict": int((self.config.get("input") or {}).get("universe", 1)) in self._output_universes()}}
@@ -704,6 +761,8 @@ class Engine:
                 self.state["master"] = max(0, min(255, int(body["master"])))
             if "blackout" in body:
                 self.state["blackout"] = bool(body["blackout"])
+            if "effect" in body:
+                self._set_effect(body["effect"])
             if "raw" in body:
                 self.raw = body["raw"] or None
             for fid in body.get("identify") or []:
@@ -713,6 +772,7 @@ class Engine:
 
     # ---- memoires -------------------------------------------------------
     def _start_fade(self, target, dur):
+        self.state["effect"] = None   # rappeler une memoire arrete l'effet en cours
         fx = self.state["fixtures"]
         self.fade = {
             "from": {fid: {k: float(fx.get(fid, {}).get(k, 0)) for k in FADE_KEYS} for fid in target},

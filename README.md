@@ -50,6 +50,13 @@ Le bouton **Identifier** fait clignoter un spot ; le **testeur de canal** permet
   par le lime, pour des peaux moins rosées. « Réglage fin des canaux » donne les faders R, G, B, Lime directs.
 - **Master**, **Blackout** (touche `B`), **Échap** pour tout désélectionner. L'état est gardé au redémarrage.
 
+## Effets
+
+Trois effets, un à la fois, avec un réglage de vitesse : **Chase** (un spot après l'autre, avec sa couleur),
+**C'est la fête** (arc-en-ciel qui tourne) et **Applaudissements** (blanc chaud qui scintille, pour les saluts).
+Un effet remplace le plateau tant qu'il tourne ; **Stop** ou le rappel d'une mémoire y met fin.
+Master et Blackout restent actifs. Sur la console, un fader peut lancer un effet (au-delà de la moitié) ou régler la vitesse.
+
 ## Console MagicQ / Mini Connect
 
 Les faders de la Mini Connect ne sont lisibles que par MagicQ. MagicQ sert donc de pont : il envoie la position

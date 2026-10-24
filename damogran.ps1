@@ -136,6 +136,43 @@ function Get-WhiteValues([string]$layout, [double]$k) {
     return @{ r = $r; g = $g; b = $b; w = $w; l = $l; h = $hs[0]; s = $hs[1]; k = [int]([Math]::Round($k / 50.0) * 50) }
 }
 
+# ---- effets : calcules a chaque image, ils remplacent l'etat du plateau tant qu'ils tournent ----
+$Effects = @('chase', 'party', 'applause')
+$WhiteCache = @{}   # blanc 3200 K par type de projecteur (evite de le recalculer 30 fois par seconde)
+
+function Get-Noise([int]$i, [double]$seg) {
+    $x = [Math]::Sin($i * 12.9898 + $seg * 78.233) * 43758.5453
+    return $x - [Math]::Floor($x)
+}
+
+function Get-Warm([string]$layout) {
+    if (-not $WhiteCache.ContainsKey($layout)) { $WhiteCache[$layout] = Get-WhiteValues $layout 3200 }
+    return $WhiteCache[$layout].Clone()
+}
+
+# Valeurs du spot i (sur n) pour l'effet, a la phase ph (secondes x vitesse)
+function Get-EffectValues([string]$name, [int]$i, [int]$n, [double]$ph, $base, [string]$layout) {
+    if ($name -eq 'chase') {   # un spot apres l'autre, dans l'ordre, avec sa couleur
+        $p = ($ph * 2.0) % $n
+        $d = [Math]::Abs($i - $p)
+        $d = [Math]::Min($d, $n - $d)
+        $out = @{}
+        foreach ($k in @($base.Keys)) { $out[$k] = $base[$k] }
+        $lit = $false
+        foreach ($k in 'r', 'g', 'b', 'l', 'w') { if ($out.ContainsKey($k) -and $out[$k]) { $lit = $true } }
+        if (-not $lit) { $wv = Get-Warm $layout; foreach ($k in @($wv.Keys)) { $out[$k] = $wv[$k] } }
+        $out.dim = 255 * [Math]::Max(0.0, 1 - $d / 1.2)
+        return $out
+    }
+    if ($name -eq 'party') {   # arc-en-ciel qui tourne sur les spots
+        $rgb = Get-HsRgb (($ph * 36 + $i * 360.0 / [Math]::Max($n, 1)) % 360) 255
+        return @{ dim = 255 * (0.8 + 0.2 * [Math]::Sin($ph * 4 + $i)); r = $rgb[0]; g = $rgb[1]; b = $rgb[2]; l = 0; w = 0; a = 0; u = 0 }
+    }
+    $out = Get-Warm $layout   # applaudissements : blanc chaud qui scintille
+    $out.dim = 255 * (0.55 + 0.45 * (Get-Noise $i ([Math]::Floor($ph * 8))))
+    return $out
+}
+
 # Correspondance proposee pour la Mini Connect : faders 1-8 = spots, 9 = blanc, 10 = master
 function New-DefaultInput($fixtures) {
     $m = @{}
@@ -183,6 +220,9 @@ $InValues = New-Object byte[] 512   # derniere valeur recue de la console, par c
 $InSeen = -100.0                    # heure du dernier paquet console
 $InSource = ''
 $XBase = @{}                        # transitions manuelles : etat de depart par memoire
+if (-not $State.ContainsKey('effect')) { $State.effect = $null }   # @{ name; speed } ou $null
+$EffectPhase = 0.0
+$EffectClock = 0.0
 
 # ---- sortie Art-Net ----------------------------------------------------------
 function Get-Udp {
@@ -217,12 +257,21 @@ function Build-Universes {
     $now = Get-Date
     $unis = @{}
     $master = [double]$State.master / 255.0
+    $eff = $State.effect
+    $nowS = Get-Now
+    # la phase avance avec la vitesse : changer de vitesse ne fait pas sauter l'effet
+    if ($eff -is [hashtable]) { $script:EffectPhase += ($nowS - $script:EffectClock) * [double]$eff.speed }
+    $script:EffectClock = $nowS
+    $n = @($Config.fixtures).Count
+    $idx = -1
     foreach ($fx in $Config.fixtures) {
+        $idx++
         $uni = [int]$fx.universe
         if (-not $unis.ContainsKey($uni)) { $unis[$uni] = New-Object byte[] 512 }
         $buf = $unis[$uni]
         $st = $State.fixtures[$fx.id]
         if (-not $st) { $st = @{} }
+        if ($eff -is [hashtable]) { $st = Get-EffectValues ([string]$eff.name) $idx $n $script:EffectPhase $st ([string]$fx.layout) }
         $layout = Parse-Layout $fx.layout
         $dim = 0.0
         if ($st.ContainsKey('dim')) { $dim = [double]$st.dim / 255.0 * $master }
@@ -662,6 +711,15 @@ function Set-ConsoleTarget([string]$target, [int]$v, [int]$old) {
         }
     } elseif ($kind -eq 'xfade') {
         Set-CrossFade $arg $v
+    } elseif ($kind -eq 'fx') {   # au-dela de la moitie : l'effet tourne ; en dessous : il s'arrete
+        $cur = $State.effect
+        $sp = 1.0
+        if ($cur -is [hashtable]) { $sp = [double]$cur.speed }
+        if ($v -ge 128 -and $old -lt 128) { Set-Effect @{ name = $arg; speed = $sp } }
+        elseif ($old -ge 128 -and $v -lt 128 -and $cur -is [hashtable] -and $cur.name -eq $arg) { Set-Effect $null }
+    } elseif ($kind -eq 'fxspeed') {
+        $State.speed = [Math]::Round(0.25 + $v * 2.75 / 255, 2)
+        if ($State.effect -is [hashtable]) { $State.effect.speed = $State.speed }
     } elseif (($kind -eq 'dim' -or $kind -eq 'white' -or $kind -eq 'hue') -and $targets.Count) {
         $script:Fade = $null
         $State.active_scene = $null
@@ -692,6 +750,7 @@ function Set-CrossFade([string]$sceneId, [int]$v) {
     foreach ($x in $State.scenes) { if ($x.id -eq $sceneId) { $sc = $x } }
     if ($null -eq $sc) { return }
     $script:Fade = $null
+    $State.effect = $null
     $target = $sc.fixtures
     if (-not ($target -is [hashtable])) { $target = @{} }
     $base = $script:XBase[$sceneId]
@@ -745,7 +804,7 @@ function Set-Input($body) {
 # ---- API ---------------------------------------------------------------------
 function Get-Snapshot {
     return @{ config = $Config; state = $State; raw = $Raw; error = $LastError; packets = $Packets; local_ips = $LocalIps
-        discovery = (Get-DiscoverySnapshot); fading = ($null -ne $script:Fade)
+        discovery = (Get-DiscoverySnapshot); fading = ($null -ne $script:Fade); effect_phase = [Math]::Round($script:EffectPhase, 3)
         input = (Get-InputSnapshot) }
 }
 
@@ -783,6 +842,7 @@ function Patch-State($body) {
     }
     if ($body.ContainsKey('master')) { $State.master = [int](Clamp ([double]$body.master) 0 255) }
     if ($body.ContainsKey('blackout')) { $State.blackout = [bool]$body.blackout }
+    if ($body.ContainsKey('effect')) { Set-Effect $body.effect }
     if ($body.ContainsKey('raw')) { $script:Raw = $body.raw }
     if ($body.identify) {
         foreach ($fid in $body.identify) { $Identify[[string]$fid] = (Get-Date).AddSeconds(2.5) }
@@ -796,7 +856,17 @@ function Get-Num($h, [string]$k) {
     return 0.0
 }
 
+function Set-Effect($eff) {
+    if (-not ($eff -is [hashtable]) -or $Effects -notcontains [string]$eff.name) { $State.effect = $null; return }
+    $cur = $State.effect
+    if (-not ($cur -is [hashtable]) -or $cur.name -ne $eff.name) { $script:EffectPhase = 0.0 }
+    $sp = 1.0
+    if ($eff.ContainsKey('speed')) { $sp = [double]$eff.speed }
+    $State.effect = @{ name = [string]$eff.name; speed = [double](Clamp $sp 0.25 3.0) }
+}
+
 function Start-Fade($target, [double]$dur) {
+    $State.effect = $null   # rappeler une memoire arrete l'effet en cours
     $from = @{}; $to = @{}
     foreach ($fid in @($target.Keys)) {
         if (-not ($State.fixtures[$fid] -is [hashtable])) { $State.fixtures[$fid] = @{} }
