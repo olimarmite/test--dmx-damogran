@@ -29,7 +29,7 @@ UI_PATH = os.path.join(HERE, "ui.html")
 
 COLOR_TOKENS = ("R", "G", "B")
 FADE_KEYS = ("dim", "r", "g", "b", "w", "a", "u", "l")   # valeurs fondues lors du rappel d'une memoire
-SCENE_KEYS = FADE_KEYS + ("h", "s", "k")   # k : temperature du blanc choisi (affichage)
+SCENE_KEYS = FADE_KEYS + ("h", "s", "k", "tint")   # k : temperature du blanc choisi (affichage)
 EXTRA_TOKENS = ("W", "A", "U", "L")  # blanc, ambre, UV, lime
 
 DEFAULT_CONFIG = {
@@ -478,6 +478,8 @@ class Engine:
         self.in_seen = 0.0                # heure du dernier paquet console
         self.in_source = ""
         self.xbase = {}                   # transitions manuelles : etat de depart par memoire
+        self.midi_vals = {}               # derniere valeur recue par commande MIDI ("cc7", "n36")
+        self.config.setdefault("grid", {"cols": 12, "rows": 7})
         self.state.setdefault("effect", None)   # {"name", "speed"} ou None
         self.effect_phase = 0.0
         self.effect_clock = time.time()
@@ -720,8 +722,34 @@ class Engine:
             if "map" in body:
                 inp["map"] = {str(int(k)): str(v) for k, v in (body["map"] or {}).items()
                               if 1 <= int(k) <= 512 and v}
+            if "midi_map" in body:
+                inp["midi_map"] = {str(k)[:8]: str(v) for k, v in (body["midi_map"] or {}).items() if v}
             self.config["input"] = inp
             save_json(CONFIG_PATH, self.config)
+
+    def set_layout(self, body):
+        """Plan de scene : taille de la grille et case de chaque spot."""
+        with self.lock:
+            g = body.get("grid") or self.config.get("grid") or {}
+            self.config["grid"] = {"cols": max(4, min(24, int(g.get("cols", 12)))), "rows": max(3, min(14, int(g.get("rows", 7))))}
+            pos = body.get("positions") or {}
+            for fx in self.config["fixtures"]:
+                if fx["id"] in pos:
+                    x, y = pos[fx["id"]]
+                    fx["x"] = max(0, min(self.config["grid"]["cols"] - 1, int(x)))
+                    fx["y"] = max(0, min(self.config["grid"]["rows"] - 1, int(y)))
+            save_json(CONFIG_PATH, self.config)
+
+    # ---- MIDI : le navigateur lit le controleur USB et transmet chaque mouvement ----
+    def midi_input(self, body):
+        key = str(body.get("key", ""))[:8]          # "cc7" (fader, bouton CC) ou "n36" (note / pad)
+        v = int(round(max(0, min(127, int(body.get("value", 0)))) * 255 / 127.0))
+        with self.lock:
+            old = self.midi_vals.get(key, 0)
+            self.midi_vals[key] = v
+            target = ((self.config.get("input") or {}).get("midi_map") or {}).get(key)
+            if target and v != old:
+                self._apply_target(str(target), v, old)
 
     # ---- persistance ----------------------------------------------------
     def saver(self):
@@ -756,7 +784,8 @@ class Engine:
                 cur = self.state["fixtures"].setdefault(fid, {})
                 for k, v in vals.items():
                     if isinstance(v, (int, float)):
-                        cur[k] = max(0, min({"h": 360, "k": 20000}.get(k, 255), v))
+                        lo = -100 if k == "tint" else 0   # tint : correction vert (-) / rose (+)
+                        cur[k] = max(lo, min({"h": 360, "k": 20000, "tint": 100}.get(k, 255), v))
             if "master" in body:
                 self.state["master"] = max(0, min(255, int(body["master"])))
             if "blackout" in body:
@@ -823,6 +852,12 @@ class Engine:
                 fade = float(body.get("fade", self.state["fade"]))
                 self.state["active_scene"] = sc["id"]
                 self._start_fade(sc.get("fixtures") or {}, max(0.0, min(60.0, fade)))
+            elif act == "go" and scenes:   # memoire suivante, avec le fondu choisi
+                ids = [x["id"] for x in scenes]
+                cur = self.state.get("active_scene") or body.get("after")   # apres un reglage a la main : la derniere rappelee
+                sc = scenes[(ids.index(cur) + 1) % len(scenes)] if cur in ids else scenes[0]
+                self.state["active_scene"] = sc["id"]
+                self._start_fade(sc.get("fixtures") or {}, self.state["fade"])
             elif act == "fade":
                 self.state["fade"] = max(0.0, min(60.0, float(body.get("fade", 0))))
             else:
@@ -850,6 +885,8 @@ class Engine:
                 "address": max(1, min(512, int(fx.get("address", 1)))),
                 "layout": str(fx.get("layout") or "D,R,G,B"),
             })
+            if isinstance(fx.get("x"), int) and isinstance(fx.get("y"), int):   # place sur le plan
+                fixtures[-1]["x"], fixtures[-1]["y"] = fx["x"], fx["y"]
         with self.lock:
             self.config = {
                 "target_ip": str(cfg.get("target_ip") or "255.255.255.255").strip(),
@@ -858,6 +895,7 @@ class Engine:
                 "fps": int(cfg.get("fps") or 30),
                 "fixtures": fixtures,
                 "input": self.config.get("input") or default_input(fixtures),
+                "grid": self.config.get("grid") or {"cols": 12, "rows": 7},
             }
             self.sock_key = None
             save_json(CONFIG_PATH, self.config)
@@ -900,6 +938,10 @@ class Handler(BaseHTTPRequestHandler):
                 ENGINE.set_config(body)
             elif self.path == "/api/input":
                 ENGINE.set_input(body)
+            elif self.path == "/api/layout":
+                ENGINE.set_layout(body)
+            elif self.path == "/api/midi":
+                ENGINE.midi_input(body)
             elif self.path == "/api/scene":
                 ENGINE.scene_action(body)
             elif self.path == "/api/discover":
