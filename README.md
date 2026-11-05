@@ -37,12 +37,24 @@ Le bouton **Identifier** fait clignoter un spot ; le **testeur de canal** permet
 
 ## Utilisation
 
-- **Plateau** : chaque spot est dessiné comme une flaque de lumière, à sa couleur et son intensité réelles.
-  Clic pour sélectionner (re-clic pour ajouter ou retirer). Rien de sélectionné : le réglage agit sur tous.
-- **Réglage** : fader d'intensité, champ de couleur (teinte de gauche à droite, saturation de bas en haut),
-  bande de blanc de 2700 K à 6500 K. Sur les projecteurs avec lime (ETC ColorSource), le blanc passe surtout
-  par le lime, pour des peaux moins rosées. « Réglage fin des canaux » donne les faders R, G, B, Lime directs.
-- **Master**, **Blackout** (touche `B`), **Échap** pour tout désélectionner. L'état est gardé au redémarrage.
+Trois écrans : **Régie**, **Plateau**, et **Réglages** (bouton à part).
+
+- **Régie** : ce qui est **en scène** (nom de la mémoire, aperçu des spots), **Master** et **Blackout** côte à côte,
+  un gros bouton **GO** qui lance la mémoire suivante (barre d'espace), les mémoires, et en bas
+  « à la main, sur tout le plateau » : **faders bruts** (intensité, rouge, vert, bleu, lime…), couleurs, blancs et effets.
+- **Plateau** : plan vu du dessus (lointain en haut, public en bas, jardin à gauche, cour à droite).
+  Touche des spots pour les régler : intensité, **Couleur** (champ teinte/saturation) ou **Blanc**
+  (température 2700–6500 K + correction plus vert / plus rose), et faders bruts.
+  **Disposer les spots** : touche un spot puis sa case (ou flèches), et règle le nombre de colonnes et de rangs.
+- Raccourcis : Espace = GO, 1 à 9 = mémoire, B = blackout, Échap = tout désélectionner (désactivables dans Réglages > Clavier).
+
+## Mémoires (scènes)
+
+- Régler les projecteurs, puis **+ Mémoriser l'état actuel** et donner un nom.
+- Clic sur une mémoire (ou touches **1** à **9**) pour la rappeler, avec le **fondu** choisi (0 s = cut, jusqu'à 10 s).
+- **⋯** sur une mémoire : renommer, écraser avec l'état actuel, supprimer.
+- La mémoire rappelée est encadrée ; toucher un réglage la désélectionne (et interrompt un fondu en cours).
+- Master et Blackout restent indépendants des mémoires. Les mémoires sont gardées dans `state.json`.
 
 ## Effets
 
@@ -59,17 +71,13 @@ des faders en Art-Net sur un univers libre, et Damogran l'écoute (**Réglages >
 1. MagicQ, `Setup > DMX I/O` : univers 1 (les projecteurs) sur *None* ; univers 2 en Art-Net, univers Art-Net 1, broadcast.
 2. `Patch` : 10 *Generic Dimmer* sur l'univers 2, adresses 1 à 10.
 3. Pour chaque fader *n* : sélectionner le dimmer *n*, 100 %, `Record`, bouton **S** du fader *n*. `Clear`.
-4. Dans Damogran, onglet Console : bouger un fader allume sa colonne, choisir ce qu'il commande
+4. Dans Damogran, Réglages > Console & MIDI : bouger un fader l'allume sur le dessin (ou « Apprendre un fader »), puis choisir ce qu'il commande
    (intensité d'un spot ou de tous, blanc chaud/froid, teinte, master, blackout, GO d'une mémoire,
    ou **transition vers une mémoire** : le fader passe à la main de l'état actuel, en bas, à la mémoire, en haut).
+
+**Contrôleur MIDI USB** : branché sur le PC, il est lu directement par le navigateur (Chrome ou Edge, page ouverte),
+et ses faders et boutons s'affectent de la même façon dans Réglages > Console & MIDI.
 
 Un fader n'agit que quand on le bouge : à la connexion, Damogran prend la position des faders sans rien changer.
 MagicQ et Damogran tournent alors sur le même PC : c'est à tester avant un spectacle.
 
-## Mémoires (scènes)
-
-- Régler les projecteurs, puis **+ Mémoriser l'état actuel** et donner un nom.
-- Clic sur une mémoire (ou touches **1** à **9**) pour la rappeler, avec le **fondu** choisi (0 s = cut, jusqu'à 10 s).
-- **⋯** sur une mémoire : renommer, écraser avec l'état actuel, supprimer.
-- La mémoire rappelée est encadrée ; toucher un réglage la désélectionne (et interrompt un fondu en cours).
-- Master et Blackout restent indépendants des mémoires. Les mémoires sont gardées dans `state.json`.
