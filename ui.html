@@ -7,7 +7,7 @@
 <title>Damogran</title>
 <style>
   /* Regie dans le noir : interface monochrome chaude pour que seules les couleurs des projecteurs
-     soient en couleur. Ambre (la servante du theatre) pour la selection, rouge reserve au blackout.
+     soient en couleur. Ambre (la servante du theatre) pour ce qui est coche, rouge reserve au blackout.
      Sombre volontairement : un ecran clair en regie se voit depuis la salle. */
   :root {
     --ground: #0f0e0c;
@@ -38,7 +38,7 @@
   body { min-height: 100vh; }
   button, input, select { font: inherit; color: inherit; }
   :focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
-  .skip { position: absolute; left: 8px; top: -40px; background: var(--amber); color: var(--amber-ink); padding: 6px 10px; border-radius: var(--r-ctl); z-index: 20; }
+  .skip { position: absolute; left: 8px; top: -40px; background: var(--amber); color: var(--amber-ink); padding: 6px 10px; border-radius: var(--r-ctl); z-index: 30; }
   .skip:focus { top: 8px; }
   .legend { font-family: var(--legend); letter-spacing: .08em; text-transform: uppercase; font-size: 13px; color: var(--ink-2); }
   .num { font-family: var(--legend); font-variant-numeric: tabular-nums; }
@@ -49,7 +49,7 @@
 
   /* ---- boutons : touches de console ---- */
   .btn { min-height: 44px; background: var(--surface-2); border: 1px solid var(--line-2); border-radius: var(--r-ctl); padding: 0 14px; cursor: pointer;
-    font-family: var(--legend); letter-spacing: .03em; font-size: 15px; transition: border-color var(--fast) var(--ease), background var(--fast) var(--ease); }
+    font-family: var(--legend); letter-spacing: .03em; font-size: 15px; color: var(--ink); transition: border-color var(--fast) var(--ease), background var(--fast) var(--ease); }
   .btn:hover { border-color: #6d655a; }
   .btn:active { background: #2d2923; }
   .btn.primary, .btn[aria-pressed="true"] { background: var(--amber); color: var(--amber-ink); border-color: var(--amber); }
@@ -57,127 +57,157 @@
   .btn.dashed { background: transparent; border-style: dashed; }
   .btn.dashed[aria-pressed="true"] { background: var(--amber); border-style: solid; }
   .btn:disabled { opacity: .45; cursor: not-allowed; }
+  a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   .seg { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 2px; background: var(--ground); border: 1px solid var(--line-2); border-radius: 6px; padding: 3px; }
   .seg button { min-height: 40px; border: 0; border-radius: 4px; background: transparent; color: var(--ink-2); cursor: pointer; font-family: var(--legend); font-size: 15px; letter-spacing: .03em; padding: 0 10px; }
   .seg button[aria-selected="true"] { background: #2d2923; color: var(--ink); }
+  input[type=range] { width: 100%; accent-color: var(--amber); height: 32px; margin: 0; }
 
   /* ---- en-tete ---- */
-  header { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10; background: var(--ground); border-bottom: 1px solid var(--line);
-    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px;
+  header { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--ground); border-bottom: 1px solid var(--line);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px;
     padding: 10px max(16px, env(safe-area-inset-right, 0px)) 10px max(16px, env(safe-area-inset-left, 0px)); }
   h1 { margin: 0; font: 600 18px/1 var(--legend); letter-spacing: .18em; text-transform: uppercase; }
   nav.views { display: flex; gap: 2px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 3px; }
   nav.views a { min-height: 38px; display: inline-flex; align-items: center; padding: 0 14px; border-radius: 4px; color: var(--ink-2); text-decoration: none; font-family: var(--legend); font-size: 15px; letter-spacing: .03em; }
   nav.views a[aria-current="page"] { background: #2d2923; color: var(--ink); }
   .status { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--ink-2); }
-  .chip { display: inline-flex; align-items: center; gap: 6px; background: none; border: 0; padding: 0; color: inherit; font-size: 13px; }
-  button.chip { cursor: pointer; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; color: inherit; font-size: 13px; text-decoration: none; }
   .dot { width: 8px; height: 8px; border-radius: 50%; background: #5a5248; flex: none; }
   .dot.ok { background: var(--ok); } .dot.err { background: var(--red); } .dot.warn { background: var(--amber); }
-  a.btn { display: inline-flex; align-items: center; text-decoration: none; color: var(--ink); }
+  .gm { display: flex; align-items: center; gap: 10px; min-width: 220px; }
+  .gm input { width: 140px; }
+  .gm .num { width: 52px; text-align: right; font-size: 17px; white-space: nowrap; }
   .blackout { min-height: 44px; padding: 0 18px; border-radius: var(--r-ctl); cursor: pointer; border: 2px solid var(--red); background: transparent; color: #ff8a7f;
     font: 600 15px/1 var(--legend); letter-spacing: .14em; text-transform: uppercase; }
   .blackout[aria-pressed="true"] { background: var(--red); color: #fff; }
 
-  main { padding: 20px max(16px, env(safe-area-inset-right, 0px)) 40px max(16px, env(safe-area-inset-left, 0px)); max-width: 1280px; margin: 0 auto; }
-  .view { display: flex; flex-direction: column; gap: 20px; }
-  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-panel); padding: 16px 18px; min-width: 0; }
+  main { padding: 16px max(16px, env(safe-area-inset-right, 0px)) 40px max(16px, env(safe-area-inset-left, 0px)); max-width: 1440px; margin: 0 auto; }
   h2 { margin: 0; font: 600 14px/1.2 var(--legend); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-2); }
   .head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
   .row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
-  .wrap2 { display: flex; flex-wrap: wrap; gap: 20px; align-items: stretch; }
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-panel); padding: 16px 18px; min-width: 0; }
+  .work { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
+  .content { flex: 999 1 620px; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+  .side { flex: 1 1 340px; min-width: 0; display: flex; flex-direction: column; gap: 16px; position: sticky; top: 76px; }
 
-  /* ---- flaques de lumiere (apercu d'un spot) ---- */
-  .pool { width: 72px; height: 72px; max-width: 100%; aspect-ratio: 1; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px solid var(--ink-3); flex: none; }
-  .pool .n { min-width: 24px; height: 24px; padding: 0 5px; border-radius: 12px; background: rgba(15,14,12,.78); display: flex; align-items: center; justify-content: center;
-    font: 600 14px/1 var(--legend); color: var(--ink); }
-
-  /* ---- regie ---- */
-  .live { flex: 999 1 600px; background: var(--floor); border: 1px solid var(--line); border-radius: 12px; padding: 18px 22px; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
-  .live-name { font: 600 30px/1.1 var(--legend); letter-spacing: .01em; }
-  .badge { font-size: 13px; padding: 3px 8px; border-radius: 3px; border: 1px solid var(--amber); color: var(--amber); }
+  /* ---- ambiances ---- */
+  .live-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; }
+  .live-name { font: 600 22px/1.1 var(--legend); }
+  .badge { font-size: 13px; padding: 2px 8px; border-radius: 3px; border: 1px solid var(--amber); color: var(--amber); }
   .badge.solid { background: var(--amber); color: var(--amber-ink); }
-  .pools { display: grid; grid-template-columns: repeat(auto-fit, minmax(64px, 1fr)); gap: 10px 8px; }
-  .pools > span { display: flex; flex-direction: column; align-items: center; gap: 6px; }
-  .pools .lvl { font: 13px/1 var(--legend); color: var(--ink-2); }
-  .master { flex: 1 1 280px; display: flex; flex-direction: column; gap: 16px; justify-content: space-between; }
-  .master .big { font: 26px/1 var(--legend); color: var(--ink); letter-spacing: 0; }
-  .master .blackout { min-height: 64px; font-size: 20px; border-radius: 8px; }
-  input[type=range] { width: 100%; accent-color: var(--amber); height: 32px; margin: 0; }
-  .cues { display: flex; flex-wrap: wrap; gap: 12px; align-items: stretch; }
-  .go { flex: 1 1 220px; min-height: 120px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 6px; padding: 16px 22px;
+  .cues { display: flex; gap: 10px; align-items: stretch; overflow-x: auto; padding-bottom: 4px; }
+  .go { flex: none; min-width: 190px; min-height: 92px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 4px; padding: 10px 18px;
     border-radius: 10px; cursor: pointer; background: var(--amber); color: var(--amber-ink); border: 1px solid var(--amber); text-align: left; }
-  .go b { font: 600 40px/1 var(--legend); letter-spacing: .06em; }
+  .go b { font: 600 30px/1 var(--legend); letter-spacing: .06em; }
+  .go span { font-size: 14px; max-width: 220px; }
   .go small { font-size: 12px; opacity: .8; }
-  .tiles { flex: 999 1 640px; min-width: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
-  .tile { display: flex; min-width: 0; border-radius: 10px; background: var(--surface); border: 1px solid var(--line-2); overflow: hidden; }
+  .go:disabled { opacity: .5; cursor: not-allowed; }
+  .tile { flex: none; width: 168px; display: flex; border-radius: 10px; background: var(--surface); border: 1px solid var(--line-2); overflow: hidden; }
   .tile.on { background: var(--surface-2); border: 2px solid var(--amber); }
-  .tile .pick { flex: 1; min-width: 0; min-height: 110px; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 12px 14px; background: none; border: 0; cursor: pointer; text-align: left; color: inherit; }
-  .tile .top { display: flex; align-items: center; gap: 8px; width: 100%; }
+  .tile .pick { flex: 1; min-width: 0; min-height: 92px; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 10px 12px; background: none; border: 0; cursor: pointer; text-align: left; color: inherit; }
+  .tile .top { display: flex; align-items: center; gap: 6px; width: 100%; }
   .tile .key { font: 14px/1 var(--legend); color: var(--ink-3); }
   .tile.on .key { color: var(--amber); }
   .tile .tag { white-space: nowrap; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; padding: 2px 6px; border-radius: 3px; }
   .tile .tag.live { background: var(--amber); color: var(--amber-ink); }
   .tile .tag.next { border: 1px solid var(--ink-2); color: var(--ink-2); }
-  .tile .name { font-size: 18px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
-  .tile .mini { display: flex; gap: 4px; flex-wrap: wrap; }
-  .tile .mini i { width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 0 1px rgba(237,231,220,.25); }
-  .tile .edit { background: none; border: 0; border-left: 1px solid var(--line); width: 44px; color: var(--ink-2); cursor: pointer; font-size: 20px; }
+  .tile .name { font-size: 16px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+  .tile .mini { display: flex; gap: 3px; flex-wrap: wrap; }
+  .tile .mini i { width: 11px; height: 11px; border-radius: 50%; box-shadow: 0 0 0 1px rgba(237,231,220,.25); }
+  .tile .edit { background: none; border: 0; border-left: 1px solid var(--line); width: 40px; color: var(--ink-2); cursor: pointer; font-size: 20px; }
+  .tile.add { align-items: center; justify-content: center; border-style: dashed; background: transparent; }
+  .tile.add button { width: 100%; height: 100%; min-height: 92px; background: none; border: 0; color: var(--ink); cursor: pointer; font-family: var(--legend); font-size: 15px; padding: 8px; }
   .empty { color: var(--ink-2); margin: 0; max-width: 62ch; }
-  .hand { display: flex; flex-direction: column; gap: 14px; }
-  .sw-row { display: flex; flex-wrap: wrap; gap: 6px; }
-  .sw { width: 44px; height: 44px; border-radius: 50%; cursor: pointer; border: 2px solid rgba(237,231,220,.3); padding: 0; }
-  .wb { min-height: 44px; min-width: 60px; border-radius: 4px; cursor: pointer; color: var(--amber-ink); border: 2px solid transparent; font: 600 14px/1 var(--legend); }
 
-  /* ---- faders verticaux (comme sur la console) ---- */
-  .faders { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; }
-  .fader { display: grid; justify-items: center; gap: 6px; flex: none; width: 58px; outline: none; }
+  /* ---- barre de selection ---- */
+  .selbar { position: sticky; top: 66px; z-index: 15; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 14px;
+    background: var(--ground); border: 1px solid var(--line-2); border-radius: 8px; box-shadow: 0 6px 18px #000a; }
+  .selbar.has { border-color: var(--amber); }
+  .selbar .count { font: 600 17px/1.2 var(--legend); }
+  .selbar.has .count { color: var(--amber); }
+
+  /* ---- cartes des spots : une tranche de console par spot ---- */
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 12px; }
+  .card { background: var(--surface); border: 2px solid var(--line); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
+  .card.sel { border-color: var(--amber); box-shadow: 0 0 0 3px rgba(242,179,61,.18); }
+  .card .toggle { display: flex; flex-direction: column; gap: 0; padding: 0; border: 0; background: none; color: inherit; cursor: pointer; text-align: left; }
+  .card .bar { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--surface-2); }
+  .card.sel .bar { background: var(--amber); color: var(--amber-ink); }
+  .box { width: 22px; height: 22px; border-radius: 5px; border: 2px solid var(--ink-2); flex: none; display: flex; align-items: center; justify-content: center; }
+  .box svg { width: 14px; height: 14px; visibility: hidden; }
+  .card.sel .box { background: var(--amber-ink); border-color: var(--amber-ink); }
+  .card.sel .box svg { visibility: visible; color: var(--amber); }
+  .card .nm { font: 600 16px/1.1 var(--legend); letter-spacing: .02em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+  .card .st { font-size: 12px; white-space: nowrap; }
+  .swatch { height: 76px; position: relative; display: flex; align-items: flex-end; padding: 8px; }
+  .swatch.off { background: repeating-linear-gradient(135deg, #171512 0 8px, #1d1b18 8px 16px) !important; }
+  .swatch .cap { font-size: 13px; padding: 3px 8px; border-radius: 4px; background: rgba(15,14,12,.82); color: var(--ink); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .card .minis { display: flex; justify-content: space-between; gap: 2px; padding: 10px 8px 4px; }
+  .card .foot { display: flex; padding: 0 8px 8px; }
+  .card .foot button { flex: 1; min-height: 36px; font-size: 13px; }
+
+  /* ---- faders verticaux ---- */
+  .fader { display: grid; justify-items: center; gap: 5px; flex: none; width: 58px; outline: none; }
   .fader .track { position: relative; width: 36px; height: 190px; border-radius: 4px; background: var(--ground); border: 1px solid var(--line-2); cursor: ns-resize; touch-action: none; }
   .fader .fill { position: absolute; left: 3px; right: 3px; bottom: 3px; border-radius: 2px; background: var(--fill, #6d655a); opacity: .6; }
   .fader .cap { position: absolute; left: -6px; right: -6px; height: 16px; margin-bottom: -8px; border-radius: 3px; background: #d9d2c5; border: 1px solid #000; box-shadow: inset 0 -2px 0 #9e968a; }
-  .fader .cap::after { content: ""; position: absolute; left: 4px; right: 4px; top: 7px; height: 1px; background: #4a453e; }
   .fader:focus-visible .track { outline: 2px solid var(--amber); outline-offset: 3px; }
-  .fader .val { font: 16px/1 var(--legend); font-variant-numeric: tabular-nums; }
-  .fader .lab { display: flex; align-items: center; gap: 5px; font: 12px/1.2 var(--legend); letter-spacing: .06em; text-transform: uppercase; color: var(--ink); text-align: center; }
-  .fader .lab i { width: 9px; height: 9px; border-radius: 50%; background: var(--fill); }
-  .fader.big { width: 72px; } .fader.big .track { width: 50px; height: 220px; }
-  .fader.slim .track { height: 160px; }
+  .fader .val { font: 15px/1 var(--legend); font-variant-numeric: tabular-nums; }
+  .fader .lab { display: flex; align-items: center; gap: 4px; font: 12px/1.2 var(--legend); letter-spacing: .05em; text-transform: uppercase; color: var(--ink); }
+  .fader .lab i { width: 8px; height: 8px; border-radius: 50%; background: var(--fill); flex: none; }
+  .fader.mini { width: 30px; }
+  .fader.mini .track { width: 20px; height: 112px; }
+  .fader.mini .cap { left: -4px; right: -4px; height: 12px; margin-bottom: -6px; }
+  .fader.mini .val { font-size: 12px; color: var(--ink-2); }
+  .fader.mini .lab { font-size: 11px; letter-spacing: 0; }
+  .faders { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
 
-  /* ---- plateau ---- */
+  /* ---- panneau « pour les spots coches » ---- */
+  .tools { display: flex; flex-direction: column; gap: 18px; }
+  .tools.off .body { opacity: .4; pointer-events: none; }
+  .tools .why { padding: 10px 12px; border: 1px dashed var(--line-2); border-radius: 6px; color: var(--ink); font-size: 14px; }
+  .tools .body { display: flex; flex-direction: column; gap: 18px; }
+  .sws { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px 6px; }
+  .sw { display: flex; flex-direction: column; align-items: center; gap: 4px; background: none; border: 0; padding: 0; cursor: pointer; color: var(--ink-2); font-size: 11px; }
+  .sw i { width: 44px; height: 44px; border-radius: 50%; border: 2px solid rgba(237,231,220,.3); display: block; }
+  .sw:hover i { border-color: var(--ink); }
+  .temp { position: relative; height: 48px; border-radius: 8px; cursor: ew-resize; touch-action: none; border: 1px solid var(--line-2); }
+  .temp .mark { position: absolute; top: -5px; bottom: -5px; width: 6px; margin-left: -3px; border-radius: 3px; background: var(--ink); box-shadow: 0 0 0 1px #000; pointer-events: none; }
+  .scale { display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-3); }
+  .quick { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .quick button { min-height: 44px; border-radius: 4px; border: 2px solid transparent; cursor: pointer; color: var(--amber-ink); font: 600 14px/1.1 var(--legend); }
+  details.more { border-top: 1px solid var(--line); padding-top: 12px; }
+  details.more summary { cursor: pointer; font: 13px/1 var(--legend); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); min-height: 32px; display: flex; align-items: center; }
+  details.more .faders { margin-top: 12px; }
+
+  /* ---- plan ---- */
   .plan-wrap { overflow-x: auto; }
   .plan { min-width: 560px; background: var(--floor); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 6px; }
-  .plan .side { font: 12px/1 var(--legend); letter-spacing: .2em; color: var(--ink-3); }
+  .plan .edge { font: 12px/1 var(--legend); letter-spacing: .2em; color: var(--ink-3); }
   .plan .mid { display: flex; gap: 8px; align-items: stretch; }
   .plan .vert { writing-mode: vertical-rl; text-align: center; }
-  .grid { flex: 1; min-width: 0; position: relative; height: 34rem; border: 1px solid var(--line); background-color: #171512;
+  .grid { flex: 1; min-width: 0; position: relative; height: 32rem; border: 1px solid var(--line); background-color: #171512;
     background-image: linear-gradient(to right, #2c2822 1px, transparent 1px), linear-gradient(to bottom, #2c2822 1px, transparent 1px); }
   .cells { position: absolute; inset: 0; display: grid; }
   .cells button { background: transparent; border: 1px dashed #5a5248; margin: 3px; border-radius: 4px; cursor: crosshair; }
   .cells button:hover { border-color: var(--amber); }
-  .spot { position: absolute; transform: translate(-50%, -50%); z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; background: none; border: 0; padding: 4px; cursor: pointer; color: inherit; border-radius: 50%; }
-  .spot .pool { width: 54px; height: 54px; }
-  .spot .lvl { font: 12px/1 var(--legend); color: var(--ink-2); }
-  .spot[aria-pressed="true"] .pool { box-shadow: 0 0 0 3px var(--floor), 0 0 0 5px var(--amber); }
-  .spot[aria-pressed="true"] .lvl { color: var(--amber); }
-  .spot.moving .pool { box-shadow: 0 0 0 3px var(--floor), 0 0 0 5px var(--amber), 0 0 0 9px rgba(242,179,61,.25); }
+  .spot { position: absolute; transform: translate(-50%, -50%); z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; background: none; border: 0; padding: 4px; cursor: pointer; color: inherit; }
+  .spot .disc { width: 52px; height: 52px; border-radius: 50%; border: 2px solid var(--line-2); display: flex; align-items: center; justify-content: center; position: relative; }
+  .spot .disc.off { background: repeating-linear-gradient(135deg, #171512 0 6px, #24211c 6px 12px) !important; }
+  .spot .n { min-width: 22px; height: 22px; padding: 0 5px; border-radius: 11px; background: rgba(15,14,12,.82); display: flex; align-items: center; justify-content: center; font: 600 13px/1 var(--legend); color: var(--ink); }
+  .spot .ck { position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 50%; background: var(--amber); color: var(--amber-ink); display: none; align-items: center; justify-content: center; }
+  .spot .ck svg { width: 13px; height: 13px; }
+  .spot[aria-pressed="true"] .disc { border: 3px solid var(--amber); box-shadow: 0 0 0 3px rgba(242,179,61,.25); }
+  .spot[aria-pressed="true"] .ck { display: flex; }
+  .spot .lb { font-size: 12px; color: var(--ink-2); white-space: nowrap; }
+  .spot[aria-pressed="true"] .lb { color: var(--amber); }
+  .spot.moving .disc { border: 3px dashed var(--amber); }
   .arrange { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; padding: 10px 14px; border: 1px solid var(--amber); border-radius: 6px; }
   .stepper { display: flex; align-items: center; gap: 6px; }
   .stepper button { width: 44px; height: 40px; border-radius: 4px; cursor: pointer; background: var(--surface-2); color: var(--ink); border: 1px solid var(--line-2); font-size: 18px; }
+  .stepper button:disabled { opacity: .4; cursor: not-allowed; }
   .stepper output { min-width: 28px; text-align: center; font: 18px/1 var(--legend); }
-  .insp { flex: 1 1 360px; display: flex; flex-direction: column; gap: 18px; }
-  .insp-title { font: 600 22px/1.1 var(--legend); color: var(--ink); letter-spacing: .02em; }
-  .ctl { display: flex; gap: 16px; align-items: flex-start; }
-  .ctl .modes { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
-  .preview-dot { width: 40px; height: 40px; border-radius: 50%; flex: none; box-shadow: 0 0 0 1px rgba(237,231,220,.3); }
-  .field { position: relative; height: 170px; border-radius: 8px; cursor: crosshair; touch-action: none; border: 1px solid var(--line-2);
-    background: linear-gradient(to top, #fff, rgba(255,255,255,0)), linear-gradient(to right, #f00, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00); }
-  .field .mark { position: absolute; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 0 1px #000; pointer-events: none; }
-  .temp { position: relative; height: 48px; border-radius: 8px; cursor: ew-resize; touch-action: none; border: 1px solid var(--line-2); }
-  .temp .mark { position: absolute; top: -5px; bottom: -5px; width: 6px; margin-left: -3px; border-radius: 3px; background: var(--ink); box-shadow: 0 0 0 1px #000; pointer-events: none; }
-  .scale { display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-3); }
-  details.raw { border-top: 1px solid var(--line); padding-top: 14px; }
-  details.raw summary { cursor: pointer; font: 13px/1 var(--legend); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); min-height: 32px; display: flex; align-items: center; }
-  details.raw .faders { margin-top: 12px; }
 
   /* ---- reglages ---- */
   .settings { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
@@ -230,20 +260,22 @@
   .steps { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: 14px; max-width: 80ch; line-height: 1.5; }
   .switch { display: inline-flex; align-items: center; gap: 10px; font-size: 15px; min-height: 44px; }
   .switch input { width: 20px; height: 20px; accent-color: var(--amber); }
+  .big-title { font: 600 22px/1.1 var(--legend); color: var(--ink); letter-spacing: .02em; text-transform: none; }
 
   dialog { background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: var(--r-panel); padding: 0; width: min(440px, calc(100vw - 24px)); }
   dialog::backdrop { background: #000c; }
   .dlg { padding: 18px; display: flex; flex-direction: column; gap: 14px; }
 
-  @media (max-width: 700px) {
-    .live-name { font-size: 24px; }
-    .pool { width: 56px; height: 56px; }
-    .go { position: sticky; bottom: max(8px, env(safe-area-inset-bottom, 0px)); z-index: 5; min-height: 84px; box-shadow: 0 6px 24px #000; }
-    .go b { font-size: 32px; }
+  @media (max-width: 760px) {
+    .gm { min-width: 0; flex: 1 1 100%; order: 5; }
+    .gm input { flex: 1; width: auto; }
+    .status .net { display: none; }
+    header { position: static; }
+    .side { position: static; }
+    .selbar { top: 0; }
+    .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
     .tester { grid-template-columns: 1fr 1fr; }
     .tester .wide { grid-column: 1 / -1; }
-    .status .net { display: none; }
-    .ctl { flex-direction: column; }
   }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
@@ -253,89 +285,63 @@
 <header>
   <h1>Damogran</h1>
   <nav class="views" aria-label="Écrans">
-    <a href="#regie" data-view="regie">Régie</a>
-    <a href="#plateau" data-view="plateau">Plateau</a>
+    <a href="#spots" data-view="spots">Spots</a>
+    <a href="#plan" data-view="plan">Plan de scène</a>
   </nav>
   <div class="status">
     <span class="chip net" role="status"><span class="dot" id="dot"></span><span id="statusText">connexion…</span></span>
-    <a class="chip" href="#reglages/console" id="consoleChip" style="color:inherit;text-decoration:none"><span class="dot" id="consoleDot"></span><span id="consoleText">Console</span></a>
+    <a class="chip" href="#reglages/console"><span class="dot" id="consoleDot"></span><span id="consoleText">Console</span></a>
   </div>
   <span class="spacer"></span>
-  <button class="blackout" id="hdrBlackout" type="button" aria-pressed="false" title="Touche B">Blackout</button>
+  <label class="gm" title="Règle toute la lumière d'un coup, sans changer les réglages des spots">
+    <span class="legend">Lumière générale</span>
+    <input type="range" id="master" min="0" max="255">
+    <span class="num" id="masterOut">100 %</span>
+  </label>
+  <button class="blackout" id="blackout" type="button" aria-pressed="false" title="Touche B">Blackout</button>
   <a class="btn" href="#reglages" id="settingsLink">Réglages</a>
 </header>
 
 <main id="main" tabindex="-1">
-  <!-- ===================== REGIE ===================== -->
-  <section class="view" id="view-regie" aria-label="Régie">
-    <div class="wrap2">
-      <section class="live" aria-labelledby="liveTitle">
+  <div class="work" id="work">
+    <div class="content">
+      <!-- ambiances : ce qui est en scene, GO, ambiances enregistrees -->
+      <section class="panel" aria-labelledby="cueTitle" style="display:flex;flex-direction:column;gap:12px">
         <div class="head">
-          <h2 id="liveTitle">En scène</h2>
-          <span class="live-name" id="liveName" role="status"></span>
-          <span class="badge" id="liveModified" hidden>modifiée à la main</span>
-          <span class="badge solid" id="liveEffect" hidden></span>
-        </div>
-        <div class="pools" id="livePools" role="img" aria-label=""></div>
-      </section>
-      <section class="panel master" aria-label="Master">
-        <div style="display:flex;flex-direction:column;gap:10px">
-          <label for="master" class="legend" style="display:flex;justify-content:space-between;align-items:baseline"><span>Master</span><span class="big" id="masterOut">100 %</span></label>
-          <input type="range" id="master" min="0" max="255">
-        </div>
-        <button class="blackout" id="blackout" type="button" aria-pressed="false" title="Touche B">Blackout</button>
-      </section>
-    </div>
-
-    <section aria-labelledby="cueTitle" style="display:flex;flex-direction:column;gap:12px">
-      <div class="head">
-        <h2 id="cueTitle">Mémoires</h2>
-        <span class="spacer"></span>
-        <span class="hint" id="fadeLbl">Fondu</span>
-        <span class="row" role="group" aria-labelledby="fadeLbl" id="fades" style="gap:4px"></span>
-      </div>
-      <div class="cues">
-        <button class="go" id="goBtn" type="button"><b>GO</b><span id="goLabel"></span><small id="goKey">barre d'espace</small></button>
-        <div class="tiles" id="sceneList"></div>
-      </div>
-      <div class="row"><button class="btn dashed" id="sceneNew" type="button">+ Mémoriser ce qui est en scène</button></div>
-    </section>
-
-    <section class="panel hand" aria-labelledby="handTitle">
-      <div class="head">
-        <h2 id="handTitle">À la main, sur tout le plateau</h2>
-        <span class="spacer"></span>
-        <span class="seg" role="tablist" aria-label="Mode de réglage" id="handTabs">
-          <button role="tab" type="button" data-hand="raw" aria-selected="true">Faders bruts</button>
-          <button role="tab" type="button" data-hand="colors" aria-selected="false">Couleurs</button>
-        </span>
-      </div>
-      <div id="handRaw">
-        <div class="faders" id="handFaders"></div>
-        <p class="help" style="margin-top:10px">Valeurs envoyées telles quelles aux LED des spots. Sur les ColorSource, le lime fait les beaux blancs.</p>
-      </div>
-      <div id="handColors" hidden style="display:flex;flex-direction:column;gap:14px">
-        <div style="display:flex;flex-direction:column;gap:8px"><span class="hint" id="swLbl">Couleur</span><div class="sw-row" role="group" aria-labelledby="swLbl" id="handSwatches"></div></div>
-        <div style="display:flex;flex-direction:column;gap:8px"><span class="hint" id="wbLbl">Blanc, de chaud à froid</span><div class="sw-row" role="group" aria-labelledby="wbLbl" id="handWhites"></div></div>
-      </div>
-      <div class="row" style="border-top:1px solid var(--line);padding-top:14px">
-        <span class="hint" id="fxLbl">Effet</span>
-        <span class="row" role="group" aria-labelledby="fxLbl" id="fxButtons" style="gap:6px"></span>
-        <label class="row" style="gap:8px;flex:1 1 220px"><span class="hint">Vitesse</span><input type="range" id="fxSpeed" min="0.25" max="3" step="0.05" value="1" style="flex:1"><span class="num" id="fxSpeedOut">1,0×</span></label>
-      </div>
-    </section>
-  </section>
-
-  <!-- ===================== PLATEAU ===================== -->
-  <section class="view" id="view-plateau" aria-label="Plateau" hidden>
-    <div class="wrap2">
-      <section aria-labelledby="planTitle" style="flex:999 1 600px;min-width:0;display:flex;flex-direction:column;gap:12px">
-        <div class="head">
-          <h2 id="planTitle">Plan de scène</h2>
-          <span class="hint">vu du dessus</span>
+          <h2 id="cueTitle">Ambiances</h2>
+          <span class="live-line"><span class="hint">en scène :</span><span class="live-name" id="liveName" role="status"></span>
+            <span class="badge" id="liveModified" hidden>modifiée à la main</span><span class="badge solid" id="liveEffect" hidden></span></span>
           <span class="spacer"></span>
-          <button class="btn" id="selAll" type="button">Tous</button>
-          <button class="btn" id="selNone" type="button">Aucun</button>
+          <span class="hint" id="fadeLbl">Transition</span>
+          <span class="row" role="group" aria-labelledby="fadeLbl" id="fades" style="gap:4px"></span>
+        </div>
+        <div class="cues" id="cues">
+          <button class="go" id="goBtn" type="button"><b>GO</b><span id="goLabel"></span><small id="goKey">barre d'espace</small></button>
+          <div style="display:flex;gap:10px" id="sceneList"></div>
+          <div class="tile add"><button type="button" id="sceneNew">+ Enregistrer l'ambiance actuelle</button></div>
+        </div>
+      </section>
+
+      <!-- barre de selection, toujours visible -->
+      <div class="selbar" id="selbar" role="region" aria-label="Spots cochés">
+        <span class="count" id="selCount" role="status"></span>
+        <span class="spacer"></span>
+        <button class="btn" type="button" id="selAll">Tout cocher</button>
+        <button class="btn quiet" type="button" id="selNone">Tout décocher</button>
+        <button class="btn primary" type="button" id="gotoTools" hidden>Régler ↓</button>
+      </div>
+
+      <!-- vue spots : une carte par spot -->
+      <section id="view-spots" aria-label="Spots">
+        <p class="help" style="margin-bottom:10px">Touche un spot pour le cocher. Les petits faders d'un spot ne règlent que lui. Le panneau « Pour les spots cochés » règle tous ceux qui sont cochés.</p>
+        <div class="cards" id="cards"></div>
+      </section>
+
+      <!-- vue plan : les spots places comme dans la salle -->
+      <section id="view-plan" aria-label="Plan de scène" hidden style="display:flex;flex-direction:column;gap:12px">
+        <div class="head">
+          <span class="hint">Vu du dessus. Touche un spot pour le cocher.</span>
+          <span class="spacer"></span>
           <button class="btn dashed" id="arrangeBtn" type="button" aria-pressed="false">Disposer les spots</button>
         </div>
         <div class="arrange" id="arrangeBar" hidden>
@@ -345,78 +351,69 @@
         </div>
         <div class="plan-wrap">
           <div class="plan">
-            <span class="side" style="text-align:center">LOINTAIN</span>
+            <span class="edge" style="text-align:center">LOINTAIN (fond de scène)</span>
             <div class="mid">
-              <span class="side vert" style="transform:rotate(180deg)">JARDIN</span>
+              <span class="edge vert" style="transform:rotate(180deg)">JARDIN (gauche)</span>
               <div class="grid" id="grid"><div class="cells" id="cells" hidden></div></div>
-              <span class="side vert">COUR</span>
+              <span class="edge vert">COUR (droite)</span>
             </div>
-            <div class="row" style="justify-content:space-between"><span class="side">PUBLIC</span><span class="hint" id="gridSize"></span></div>
-          </div>
-        </div>
-      </section>
-
-      <section class="panel insp" aria-labelledby="inspTitle">
-        <div>
-          <h2 id="inspTitle" class="insp-title" style="text-transform:none;letter-spacing:.02em"></h2>
-          <span class="hint" id="inspSub"></span>
-        </div>
-        <div id="inspEmpty" style="display:flex;flex-direction:column;gap:14px;align-items:flex-start">
-          <p class="empty">Touche un spot sur le plan pour le régler. Touches-en plusieurs pour les régler ensemble.</p>
-          <button class="btn primary" type="button" id="inspAll">Sélectionner tout le plateau</button>
-        </div>
-        <div id="inspBody" style="display:flex;flex-direction:column;gap:18px">
-          <div class="ctl">
-            <div id="dimFader"></div>
-            <div class="modes">
-              <div class="row" style="flex-wrap:nowrap">
-                <span class="preview-dot" id="previewDot" aria-hidden="true"></span>
-                <span class="seg" role="tablist" aria-label="Type de lumière" style="flex:1" id="modeTabs">
-                  <button role="tab" type="button" data-mode="color" aria-selected="true">Couleur</button>
-                  <button role="tab" type="button" data-mode="white" aria-selected="false">Blanc</button>
-                </span>
-              </div>
-              <div id="modeColor" style="display:flex;flex-direction:column;gap:10px">
-                <div class="field" id="field" role="slider" tabindex="0" aria-label="Couleur : teinte de gauche à droite, saturation de bas en haut"><span class="mark" id="fieldMark"></span></div>
-                <div class="sw-row" role="group" aria-label="Raccourcis de couleur" id="inspSwatches"></div>
-              </div>
-              <div id="modeWhite" hidden style="display:flex;flex-direction:column;gap:14px">
-                <div style="display:flex;flex-direction:column;gap:8px">
-                  <span class="row" style="justify-content:space-between"><span class="hint">Température</span><span class="num" style="font-size:18px" id="kOut"></span></span>
-                  <div class="temp" id="temp" role="slider" tabindex="0" aria-label="Température du blanc" aria-valuemin="2700" aria-valuemax="6500"><span class="mark" id="tempMark"></span></div>
-                  <span class="scale"><span>chaud · bougie</span><span>neutre</span><span>froid · lune</span></span>
-                </div>
-                <div style="display:flex;flex-direction:column;gap:6px">
-                  <label for="tint" class="row" style="justify-content:space-between"><span class="hint">Correction</span><span id="tintOut"></span></label>
-                  <input type="range" id="tint" min="-100" max="100" value="0">
-                  <span class="scale"><span>plus vert</span><span>plus rose</span></span>
-                  <span class="hint" style="font-size:12px">Peaux trop rouges ou rosées : pousse un peu vers le vert.</span>
-                </div>
-              </div>
-            </div>
-          </div>
-          <details class="raw" open>
-            <summary>Faders bruts : ce que reçoit le projecteur</summary>
-            <div class="faders" id="inspRaw"></div>
-          </details>
-          <div class="row">
-            <button class="btn" id="identify" type="button">Faire clignoter</button>
-            <button class="btn quiet" id="deselect" type="button">Désélectionner</button>
+            <div class="row" style="justify-content:space-between"><span class="edge">PUBLIC</span><span class="hint" id="gridSize"></span></div>
           </div>
         </div>
       </section>
     </div>
-  </section>
+
+    <aside class="side">
+      <section class="panel tools" id="tools" aria-labelledby="toolsTitle">
+        <div>
+          <h2 id="toolsTitle">Pour les spots cochés</h2>
+          <span class="big-title" id="toolsWho" style="display:block;margin-top:4px"></span>
+        </div>
+        <p class="why" id="toolsWhy">Coche d'abord un ou plusieurs spots (ou « Tout cocher ») : ces réglages s'appliqueront à eux.</p>
+        <div class="body">
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <label for="selDim" class="row" style="justify-content:space-between"><span class="legend">Luminosité</span><span class="num" style="font-size:18px" id="selDimOut"></span></label>
+            <input type="range" id="selDim" min="0" max="255">
+            <div class="row" style="gap:6px"><button class="btn" type="button" id="selOff">Éteindre</button><button class="btn" type="button" id="selHalf">Moitié</button><button class="btn" type="button" id="selFull">À fond</button></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <span class="legend" id="colLbl">Couleur</span>
+            <div class="sws" role="group" aria-labelledby="colLbl" id="swatches"></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <span class="row" style="justify-content:space-between"><span class="legend">Blanc</span><span class="num" style="font-size:16px" id="kOut"></span></span>
+            <div class="quick" id="quickWhites"></div>
+            <div class="temp" id="temp" role="slider" tabindex="0" aria-label="Température du blanc, de chaud à froid" aria-valuemin="2700" aria-valuemax="6500"><span class="mark" id="tempMark"></span></div>
+            <span class="scale"><span>chaud · bougie</span><span>neutre</span><span>froid · ciel</span></span>
+            <label for="tint" class="row" style="justify-content:space-between;margin-top:6px"><span class="hint">Si la peau paraît trop rose ou trop verte</span><span id="tintOut" class="hint" style="color:var(--ink)"></span></label>
+            <input type="range" id="tint" min="-100" max="100" value="0">
+            <span class="scale"><span>plus vert</span><span>plus rose</span></span>
+          </div>
+          <details class="more">
+            <summary>Canaux un par un (pour experts)</summary>
+            <div class="faders" id="selRaw"></div>
+          </details>
+          <button class="btn" type="button" id="identify">Faire clignoter pour les repérer</button>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="fxTitle" style="display:flex;flex-direction:column;gap:12px">
+        <h2 id="fxTitle">Effets sur tout le plateau</h2>
+        <div class="row" id="fxButtons" style="gap:6px"></div>
+        <label class="row" style="gap:8px"><span class="hint">Vitesse</span><input type="range" id="fxSpeed" min="0.25" max="3" step="0.05" value="1" style="flex:1"><span class="num" id="fxSpeedOut">1,0×</span></label>
+      </section>
+    </aside>
+  </div>
 
   <!-- ===================== REGLAGES ===================== -->
-  <section class="view" id="view-reglages" aria-label="Réglages" hidden>
+  <section id="view-reglages" aria-label="Réglages" hidden>
     <div class="settings">
       <nav class="subnav" aria-label="Réglages" id="subnav">
         <button type="button" data-pane="fixtures">Projecteurs</button>
         <button type="button" data-pane="console">Console &amp; MIDI</button>
         <button type="button" data-pane="network">Réseau Art-Net</button>
         <button type="button" data-pane="keys">Clavier</button>
-        <a class="btn quiet" href="#regie" style="margin-top:12px">← Retour à la régie</a>
+        <a class="btn quiet" href="#spots" style="margin-top:12px">← Retour aux spots</a>
       </nav>
 
       <div class="pane" data-pane="fixtures">
@@ -430,7 +427,7 @@
         <div class="row"><button class="btn" id="addFx" type="button">+ Ajouter un projecteur</button><span class="spacer"></span><button class="btn primary" id="saveFx" type="button">Enregistrer</button></div>
         <div class="warn" id="overlap"></div>
         <p class="help"><b>Univers</b> : numéro Art-Net, à partir de 0 (l'univers 1 de MagicQ est en général l'Art-Net 0).
-          <b>Canaux</b> : l'ordre des canaux, séparés par des virgules. <code>D</code> intensité, <code>R</code> <code>G</code> <code>B</code>,
+          <b>Canaux</b> : l'ordre des canaux, séparés par des virgules. <code>D</code> luminosité, <code>R</code> <code>G</code> <code>B</code>,
           <code>L</code> lime, <code>W</code> blanc, <code>A</code> ambre, <code>U</code> UV, un nombre = valeur fixe, <code>-</code> = 0.
           ETC ColorSource en mode Dir (6 canaux) : <code>D,R,G,B,L,0</code>. En mode 5ch : <code>D,R,G,B,0</code>.</p>
         <div class="panel" style="display:flex;flex-direction:column;gap:10px">
@@ -460,7 +457,7 @@
             <p class="help" id="learnHint" role="status"></p>
           </div>
           <div class="panel assign" aria-labelledby="assignTitle">
-            <div><h2 id="assignTitle" class="insp-title" style="text-transform:none;letter-spacing:.02em"></h2><span class="hint" id="assignNow"></span></div>
+            <div><h2 id="assignTitle" class="big-title"></h2><span class="hint" id="assignNow"></span></div>
             <div id="assignGroups" style="display:flex;flex-direction:column;gap:14px"></div>
           </div>
         </div>
@@ -500,7 +497,7 @@
       <div class="pane" data-pane="keys" hidden>
         <h3>Clavier</h3>
         <label class="switch"><input type="checkbox" id="keysOn"> Raccourcis clavier</label>
-        <p class="help">Espace : GO · 1 à 9 : rappeler une mémoire · B : blackout · Échap : tout désélectionner. À couper si tu pilotes avec la saisie vocale ou si quelqu'un tape à côté. Réglage propre à ce navigateur.</p>
+        <p class="help">Espace : GO · 1 à 9 : rappeler une ambiance · B : blackout · Échap : tout décocher. À couper si tu pilotes avec la saisie vocale ou si quelqu'un tape à côté. Réglage propre à ce navigateur.</p>
       </div>
     </div>
   </section>
@@ -508,7 +505,7 @@
 
 <dialog id="sceneDlg" aria-labelledby="sceneDlgTitle">
   <div class="dlg">
-    <h2 id="sceneDlgTitle" style="text-transform:none;letter-spacing:.02em;color:var(--ink);font-size:20px"></h2>
+    <h2 id="sceneDlgTitle" class="big-title" style="font-size:20px"></h2>
     <label class="lbl">Nom <input type="text" id="sceneName" maxlength="30"></label>
     <div class="row" id="sceneDlgBtns"></div>
   </div>
@@ -516,14 +513,17 @@
 
 <script>
 const PRESETS = [
-  ["Rouge", 255, 0, 0], ["Ambre", 255, 120, 0], ["Jaune", 255, 220, 0], ["Vert", 0, 255, 0], ["Cyan", 0, 255, 220],
-  ["Bleu", 0, 50, 255], ["Bleu nuit", 30, 0, 170], ["Violet", 140, 0, 255], ["Magenta", 255, 0, 190], ["Rose", 255, 70, 130],
+  ["Rouge", 255, 0, 0], ["Orange", 255, 110, 0], ["Jaune", 255, 220, 0], ["Vert", 0, 255, 0], ["Turquoise", 0, 255, 200],
+  ["Bleu", 0, 60, 255], ["Bleu nuit", 30, 0, 170], ["Violet", 140, 0, 255], ["Magenta", 255, 0, 190], ["Rose", 255, 70, 130],
 ];
-const WHITES = [2700, 3200, 4000, 5600, 6500];
+const QUICK_WHITES = [[2700, "Chaud"], [4000, "Neutre"], [6500, "Froid"]];
 const KMIN = 2700, KMAX = 6500;
+// canaux reglables a la main : cle d'etat, nom, couleur du repere, lettre dans « Canaux » (aucune = toujours)
 const CHANNELS = [["r", "Rouge", "#ff3b30"], ["g", "Vert", "#34d058"], ["b", "Bleu", "#3b6bff"], ["l", "Lime", "#c6dd3c", "L"], ["w", "Blanc", "#e8e2d6", "W"], ["a", "Ambre", "#ffa31a", "A"], ["u", "UV", "#9b6bff", "U"]];
+const SHORT = { r: "R", g: "V", b: "B", l: "L", w: "W", a: "A", u: "UV" };
 const FX = [["chase", "Chase"], ["party", "C'est la fête"], ["applause", "Applaudissements"]];
-const FADES = [[0, "cut"], [2, "2 s"], [5, "5 s"], [10, "10 s"]];
+const FADES = [[0, "instantanée"], [2, "2 s"], [5, "5 s"], [10, "10 s"]];
+const CHECK = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M2.5 7.5l3 3 6-7"/></svg>';
 
 let config = null, state = null, input = null, selected = new Set();
 let pending = {}, sendTimer = null, lastEdit = 0, lastPackets = -1, lastScene = null;
@@ -531,7 +531,7 @@ const $ = id => document.getElementById(id);
 function el(tag, attrs, ...kids) {
   const e = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs || {})) {
-    if (k.startsWith("on")) e[k] = v; else if (v !== false && v != null) e.setAttribute(k, v === true ? "" : v);
+    if (k.startsWith("on")) e[k] = v; else if (k === "html") e.innerHTML = v; else if (v !== false && v != null) e.setAttribute(k, v === true ? "" : v);
   }
   for (const k of kids) if (k != null && k !== false) e.append(k);
   return e;
@@ -539,7 +539,87 @@ function el(tag, attrs, ...kids) {
 const pref = (k, d) => { try { const v = localStorage.getItem("damogran." + k); return v === null ? d : v === "1"; } catch (e) { return d; } };
 const setPref = (k, v) => { try { localStorage.setItem("damogran." + k, v ? "1" : "0"); } catch (e) { } };
 
-/* ---------- couleurs (memes formules que le serveur) ---------- */
+/* ---------- couleurs : modele des LED, memes formules que le serveur ---------- */
+// chromaticite CIE 1931 (x, y) et flux relatif de chaque LED. Valeurs typiques de LED de theatre,
+// pas des mesures des ColorSource : la correction vert / rose sert a ajuster a l'oeil.
+const EMITTERS = { r: [0.700, 0.299, 0.28], g: [0.170, 0.700, 0.60], b: [0.145, 0.045, 0.07], l: [0.410, 0.550, 1.00], w: [0.330, 0.340, 1.00], a: [0.570, 0.425, 0.45], u: [0.170, 0.010, 0.01] };
+const xyzOf = (x, y, Y) => [x / y * Y, Y, (1 - x - y) / y * Y];
+function planckXy(T) {   // Kim et al., 2002
+  const x = T <= 4000 ? -0.2661239e9 / T ** 3 - 0.2343589e6 / T ** 2 + 0.8776956e3 / T + 0.179910
+                      : -3.0258469e9 / T ** 3 + 2.1070379e6 / T ** 2 + 0.2226347e3 / T + 0.240390;
+  const y = T <= 2222 ? -1.1063814 * x ** 3 - 1.34811020 * x ** 2 + 2.18555832 * x - 0.20219683
+          : T <= 4000 ? -0.9549476 * x ** 3 - 1.37418593 * x ** 2 + 2.09137015 * x - 0.16748867
+                      : 3.0817580 * x ** 3 - 5.87338670 * x ** 2 + 3.75112997 * x - 0.37001483;
+  return [x, y];
+}
+function whiteXy(T, duv) {   // blanc vise, decale de duv perpendiculairement au corps noir (+ vert, - rose)
+  const uv = (x, y) => { const d = -2 * x + 12 * y + 3; return [4 * x / d, 6 * y / d]; };
+  const [u0, v0] = uv(...planckXy(T)), [u1, v1] = uv(...planckXy(T + 10));
+  const n = Math.hypot(u1 - u0, v1 - v0);
+  let nu = -(v1 - v0) / n, nv = (u1 - u0) / n;
+  if (nv < 0) { nu = -nu; nv = -nv; }
+  const u = u0 + duv * nu, v = v0 + duv * nv, d = 2 * u - 8 * v + 4;
+  return [3 * u / d, 2 * v / d];
+}
+const det3 = m => m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
+function solve3(m, b) {
+  const d = det3(m);
+  return [0, 1, 2].map(i => det3(m.map((row, r) => row.map((v, c) => c === i ? b[r] : v))) / d);
+}
+const mixCache = new Map();
+function whiteMix(chans, T, duv) {   // melange (0..1) qui donne ce blanc avec le plus de lumiere possible
+  const key = chans + T + "/" + duv;
+  if (mixCache.has(key)) return mixCache.get(key);
+  const base = ["r", "g", "b"].filter(c => chans.includes(c)), extra = ["l", "w", "a"].find(c => chans.includes(c));
+  if (base.length < 3) return {};
+  const [x, y] = whiteXy(T, duv), t = xyzOf(x, y, 1), em = {};
+  for (const c of base.concat(extra ? [extra] : [])) em[c] = xyzOf(...EMITTERS[c]);
+  const m = [0, 1, 2].map(k => base.map(c => em[c][k]));
+  const u = solve3(m, t), w = extra ? solve3(m, em[extra]) : [0, 0, 0];
+  let best = null;
+  const steps = extra ? 200 : 0;
+  for (let i = 0; i <= steps; i++) {
+    const d = steps ? i / steps : 0;
+    let lo = 0, hi = Infinity, ok = true;
+    for (let j = 0; j < 3; j++) {   // chaque LED de base : 0 <= s*u - d*w <= 1
+      const ui = u[j], wi = w[j];
+      if (Math.abs(ui) < 1e-12) { ok = ok && -d * wi >= 0 && -d * wi <= 1; continue; }
+      const a = d * wi / ui, b = (1 + d * wi) / ui;
+      if (ui > 0) { lo = Math.max(lo, a); hi = Math.min(hi, b); } else { lo = Math.max(lo, b); hi = Math.min(hi, a); }
+    }
+    if (ok && lo <= hi && (!best || hi > best[0])) best = [hi, d, u.map((ui, j) => hi * ui - d * w[j])];
+  }
+  const out = {};
+  if (best) {
+    base.forEach((c, j) => out[c] = best[2][j]);
+    if (extra) out[extra] = best[1];
+    const top = Math.max(...Object.values(out)) || 1;
+    for (const c in out) out[c] = Math.max(0, out[c] / top);
+  }
+  mixCache.set(key, out);
+  return out;
+}
+// couleur a montrer pour des valeurs de LED (0..255) : somme des LED en XYZ, puis sRGB (le plus fort a 255)
+function displayRgb(st) {
+  let X = 0, Y = 0, Z = 0;
+  for (const [c, e] of Object.entries(EMITTERS)) {
+    const v = (st[c] || 0) / 255;
+    if (v > 0) { const p = xyzOf(...e); X += v * p[0]; Y += v * p[1]; Z += v * p[2]; }
+  }
+  if (Y <= 0) return [0, 0, 0];
+  const lin = [3.2406 * X - 1.5372 * Y - 0.4986 * Z, -0.9689 * X + 1.8758 * Y + 0.0415 * Z, 0.0557 * X - 0.2040 * Y + 1.0570 * Z].map(v => Math.max(0, v));
+  const top = Math.max(...lin) || 1, gam = v => v <= 0.0031308 ? 12.92 * v : 1.055 * v ** (1 / 2.4) - 0.055;
+  return lin.map(v => Math.round(255 * gam(v / top)));
+}
+function whiteVals(lay, k, tint = 0) {   // valeurs des LED pour un blanc a k kelvins sur ce projecteur
+  k = Math.round(Math.max(KMIN, Math.min(KMAX, k)) / 50) * 50; tint = Math.max(-100, Math.min(100, Math.round(tint)));
+  const chans = ["R", "G", "B", "L", "W", "A"].filter(c => lay.includes(c)).join("").toLowerCase();
+  const mix = whiteMix(chans, k, -tint * 0.00012), out = {};
+  for (const c of ["r", "g", "b", "w", "l", "a"]) out[c] = Math.round((mix[c] || 0) * 255);
+  [out.h, out.s] = rgbToHs(...displayRgb(out));
+  out.k = k; out.tint = tint;
+  return out;
+}
 function hsToRgb(h, s) {
   s /= 255; const f = n => { const k = (n + h / 60) % 6; return 255 * (1 - s * Math.max(0, Math.min(k, 4 - k, 1))); };
   return [f(5), f(3), f(1)].map(Math.round);
@@ -551,59 +631,20 @@ function rgbToHs(r, g, b) {
   if (h < 0) h += 360;
   return [Math.round(h), max ? Math.round(255 * d / max) : 0];
 }
-// Approximation de Tanner Helland : couleur d'un blanc a k kelvins
-function kelvinToRgb(k) {
-  const t = k / 100, c = v => Math.round(Math.max(0, Math.min(255, v)));
-  const r = t <= 66 ? 255 : 329.698727446 * Math.pow(t - 60, -0.1332047592);
-  const g = t <= 66 ? 99.4708025861 * Math.log(t) - 161.1195681661 : 288.1221695283 * Math.pow(t - 60, -0.0755148492);
-  const b = t >= 66 ? 255 : t <= 19 ? 0 : 138.5177312231 * Math.log(t - 10) - 305.0447927307;
-  return [c(r), c(g), c(b)];
-}
-// Blancs pour projecteurs RGB + lime (ETC ColorSource) : le blanc vient surtout du lime,
-// peu de vert et de bleu (l'indigo rosit les peaux).
-const LIME_WHITES = [[2700, 255, 180, 0, 10], [3200, 255, 150, 0, 30], [4000, 255, 125, 15, 55], [5600, 255, 80, 60, 140], [6500, 230, 70, 70, 170]];
-function limeWhite(k) {
-  const t = LIME_WHITES;
-  if (k <= t[0][0]) return t[0].slice(1);
-  for (let i = 1; i < t.length; i++) if (k <= t[i][0]) {
-    const f = (k - t[i - 1][0]) / (t[i][0] - t[i - 1][0]);
-    return [1, 2, 3, 4].map(j => Math.round(t[i - 1][j] + (t[i][j] - t[i - 1][j]) * f));
-  }
-  return t[t.length - 1].slice(1);
-}
-function whiteVals(lay, k, tint = 0) {
-  let [r, g, b] = kelvinToRgb(k), w = 0, l = 0;
-  const [h, s] = rgbToHs(r, g, b);
-  if (lay.includes("L") && !lay.includes("W")) [l, r, g, b] = limeWhite(k);
-  else if (lay.includes("W")) { w = Math.min(r, g, b); r -= w; g -= w; b -= w; }
-  // correction : vers le rose (+) plus de rouge et de bleu, moins de vert et de lime ; vers le vert (-) l'inverse
-  const c = tint / 100, cl = v => Math.max(0, Math.min(255, Math.round(v)));
-  if (c > 0) { r *= 1 + 0.15 * c; b *= 1 + 0.4 * c; g *= 1 - 0.5 * c; l *= 1 - 0.25 * c; }
-  else if (c < 0) { const d = -c; r *= 1 - 0.2 * d; b *= 1 - 0.4 * d; g += 40 * d; }
-  return { r: cl(r), g: cl(g), b: cl(b), w, l: cl(l), h, s, k, tint };
-}
-// Lumiere reellement emise, pour l'apercu : le lime est un vert-jaune pale, le blanc s'ajoute partout.
-// Au-dela de 255, on garde la teinte en ramenant le plus fort a 255.
-function emitted(st) {
-  const l = st.l ?? 0, w = st.w ?? 0, a = st.a ?? 0;
-  const c = [(st.r ?? 0) + 0.9 * l + w + a, (st.g ?? 0) + l + w + 0.6 * a, (st.b ?? 0) + 0.43 * l + w], m = Math.max(...c);
-  return m > 255 ? c.map(v => v * 255 / m) : c;
-}
-// Couleur a l'ecran : un blanc est montre a sa temperature (le melange lime + rouge ne se simule pas bien)
-function preview(st) { return st.k ? kelvinToRgb(st.k) : emitted(st); }
-function poolBg(st, k) {
-  if (k <= 0.01) return "transparent";
-  const [r, g, b] = preview(st), c = `${r | 0},${g | 0},${b | 0}`;
-  return `radial-gradient(circle, rgba(${c},${Math.min(1, 0.35 + k)}) 0%, rgba(${c},${0.85 * k}) 45%, rgba(${c},${0.12 * k}) 72%, transparent 100%)`;
-}
-const NAMED = [["rouge", 0], ["orange", 25], ["ambre", 40], ["jaune", 55], ["vert", 120], ["cyan", 180], ["bleu", 225], ["violet", 270], ["magenta", 310], ["rose", 340], ["rouge", 360]];
+const NAMED = [["rouge", 0], ["orange", 25], ["ambre", 40], ["jaune", 55], ["vert", 120], ["turquoise", 170], ["bleu", 225], ["violet", 270], ["magenta", 310], ["rose", 340], ["rouge", 360]];
 function colorName(st) {
-  if (st.k) return "blanc " + st.k + " K";
-  const [r, g, b] = emitted(st), [h, s] = rgbToHs(r, g, b);
-  if (s < 40) return "blanc";
+  if (st.k && st.k >= KMIN) return st.k <= 3400 ? "blanc chaud" : st.k >= 5200 ? "blanc froid" : "blanc neutre";
+  const [r, g, b] = displayRgb(st), [h, s] = rgbToHs(r, g, b);
+  if (!r && !g && !b) return "aucune couleur";
+  if (s < 45) return "blanc";
   return NAMED.reduce((a, x) => Math.abs(x[1] - h) < Math.abs(a[1] - h) ? x : a)[0] + (s < 140 ? " pâle" : "");
 }
-// Effets : memes formules que le serveur, pour animer l'apercu
+// fond d'un apercu : la couleur reste lisible a faible luminosite (assombrie, jamais noire)
+function swatchBg(st, k) {
+  const [r, g, b] = displayRgb(st), f = 0.3 + 0.7 * Math.min(1, k);
+  return `rgb(${r * f | 0},${g * f | 0},${b * f | 0})`;
+}
+// effets : memes formules que le serveur, pour animer les apercus
 function noise(i, seg) { const x = Math.sin(i * 12.9898 + seg * 78.233) * 43758.5453; return x - Math.floor(x); }
 function effectValues(name, i, n, ph, base, lay) {
   if (name === "chase") {
@@ -620,9 +661,14 @@ function effectValues(name, i, n, ph, base, lay) {
   return Object.assign(whiteVals(lay, 3200), { dim: 255 * (0.55 + 0.45 * noise(i, Math.floor(ph * 8))) });
 }
 function layoutOf(fx) { return String(fx.layout || "").toUpperCase().split(/[,; ]+/).filter(Boolean); }
-function fxState(id) { return state.fixtures[id] || (state.fixtures[id] = { dim: 0, h: 0, s: 0, r: 0, g: 0, b: 0 }); }
+function fxState(id) { return state.fixtures[id] || (state.fixtures[id] = { dim: 0, r: 0, g: 0, b: 0 }); }
 function level(st) { return state.blackout ? 0 : (st.dim ?? 0) / 255 * (state.master / 255); }
 const allIds = () => config.fixtures.map(f => f.id);
+const fxById = id => config.fixtures.find(f => f.id === id);
+const shown = (fx, i) => {   // valeurs a montrer : l'effet en cours s'il y en a un
+  const base = state.fixtures[fx.id] || {};
+  return state.effect ? effectValues(state.effect.name, i, config.fixtures.length, fxPhase, base, layoutOf(fx)) : base;
+};
 
 /* ---------- reseau ---------- */
 async function api(path, body) {
@@ -659,7 +705,7 @@ async function poll() {
     if (snap.state.effect) fxPhase = snap.effect_phase;
     config = snap.config; input = snap.input;
     window.localIps = snap.local_ips; window.discovery = snap.discovery;
-    if (cfgChanged) { buildPlan(); buildRawFaders(); }
+    if (cfgChanged) { buildCards(); buildPlan(); buildSelRaw(); }
     if (view === "reglages" && !settingsLoaded) loadSettings();   // page ouverte directement sur les reglages
     render();
     fast = snap.fading || (view === "reglages" && pane === "console");
@@ -672,16 +718,16 @@ async function poll() {
 function setStatus(kind, txt) { $("dot").className = "dot " + kind; $("statusText").textContent = txt; }
 
 /* ---------- vues ---------- */
-let view = "regie", pane = "fixtures";
+let view = "spots", pane = "fixtures";
 function route() {
-  const [v, p] = (location.hash.slice(1) || "regie").split("/");
+  const [v, p] = (location.hash.slice(1) || "spots").split("/");
   const prev = view;
-  view = ["regie", "plateau", "reglages"].includes(v) ? v : "regie";
-  for (const s of ["regie", "plateau", "reglages"]) $("view-" + s).hidden = s !== view;
+  view = ["spots", "plan", "reglages"].includes(v) ? v : "spots";
+  $("work").hidden = view === "reglages"; $("view-reglages").hidden = view !== "reglages";
+  $("view-spots").hidden = view !== "spots"; $("view-plan").hidden = view !== "plan";
   for (const a of document.querySelectorAll("nav.views a")) {
     if (a.dataset.view === view) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
   }
-  $("hdrBlackout").hidden = view === "regie";   // en regie, le blackout est a cote du master
   $("settingsLink").hidden = view === "reglages";
   if (view === "reglages") { if (prev !== "reglages") { settingsLoaded = false; loadSettings(); } showPane(p || pane); }
   else if (prev === "reglages") queue({ raw: null });   // le testeur de canal s'arrete en quittant les reglages
@@ -690,10 +736,10 @@ function route() {
 window.addEventListener("hashchange", route);
 
 /* ---------- fader vertical ---------- */
-function makeFader({ label, cls = "", fill, onInput }) {
+function makeFader({ label, short, cls = "", fill, onInput }) {
   const root = el("div", { class: "fader " + cls, role: "slider", tabindex: 0, "aria-label": label, "aria-valuemin": 0, "aria-valuemax": 100 });
   const track = el("div", { class: "track" }), fillEl = el("div", { class: "fill" }), cap = el("div", { class: "cap" });
-  const val = el("div", { class: "val" }), lab = el("div", { class: "lab" }, el("i", { "aria-hidden": "true" }), label);
+  const val = el("div", { class: "val" }), lab = el("div", { class: "lab", "aria-hidden": "true" }, el("i"), short || label);
   if (fill) root.style.setProperty("--fill", fill);
   track.append(fillEl, cap); root.append(val, track, lab);
   let value = 0;
@@ -706,7 +752,7 @@ function makeFader({ label, cls = "", fill, onInput }) {
   };
   const emit = v => { v = Math.max(0, Math.min(255, Math.round(v))); show(v); onInput(v); };
   const fromY = e => { const r = track.getBoundingClientRect(); return (1 - (e.clientY - r.top) / r.height) * 255; };
-  track.addEventListener("pointerdown", e => { track.setPointerCapture(e.pointerId); root.dataset.drag = "1"; emit(fromY(e)); });
+  track.addEventListener("pointerdown", e => { track.setPointerCapture(e.pointerId); root.dataset.drag = "1"; emit(fromY(e)); e.stopPropagation(); });
   track.addEventListener("pointermove", e => { if (root.dataset.drag) emit(fromY(e)); });
   const end = () => { delete root.dataset.drag; };
   track.addEventListener("pointerup", end); track.addEventListener("pointercancel", end);
@@ -721,64 +767,24 @@ function makeFader({ label, cls = "", fill, onInput }) {
 
 /* ---------- actions (sur une liste de spots) ---------- */
 function patchAll(ids, fn) {
+  if (!ids.length) return;
   const patch = {};
   for (const id of ids) { const st = fxState(id), vals = fn(st, id); Object.assign(st, vals); patch[id] = vals; }
   queue({ fixtures: patch }); render();
 }
 const setDim = (ids, dim) => patchAll(ids, () => ({ dim }));
-function setChannel(ids, k, v) {
-  patchAll(ids, st => {
-    const p = { [k]: v, k: 0 };   // un fader brut sort du mode blanc
-    const n = Object.assign({}, st, p); [p.h, p.s] = rgbToHs(n.r ?? 0, n.g ?? 0, n.b ?? 0);
-    return p;
-  });
-}
-function applyHs(ids, h, s) {
-  const [r, g, b] = hsToRgb(h, s);
-  patchAll(ids, st => Object.assign({ h, s, r, g, b, w: 0, l: 0, k: 0 }, st.dim ? {} : { dim: 255 }));   // couleur pure : blanc et lime coupes
+const setChannel = (ids, k, v) => patchAll(ids, () => ({ [k]: v, k: 0 }));   // un canal touche a la main : ce n'est plus un blanc calcule
+function applyColor(ids, r, g, b) {   // couleur pure : blanc, lime et ambre coupes
+  const [h, s] = rgbToHs(r, g, b);
+  patchAll(ids, st => Object.assign({ r, g, b, w: 0, l: 0, a: 0, u: 0, h, s, k: 0 }, st.dim ? {} : { dim: 255 }));
 }
 function applyWhite(ids, k, tint) {
-  patchAll(ids, (st, id) => {
-    const fx = config.fixtures.find(f => f.id === id);
-    return Object.assign(whiteVals(fx ? layoutOf(fx) : [], k, tint ?? st.tint ?? 0), st.dim ? {} : { dim: 255 });
-  });
+  patchAll(ids, (st, id) => Object.assign(whiteVals(layoutOf(fxById(id) || {}), k, tint ?? st.tint ?? 0), st.dim ? {} : { dim: 255 }));
 }
 const toggleBlackout = () => { state.blackout = !state.blackout; queue({ blackout: state.blackout }); render(); };
+function toggleSel(id) { selected.has(id) ? selected.delete(id) : selected.add(id); render(); }
 
-/* ---------- regie ---------- */
-function renderLive() {
-  const sc = (state.scenes || []).find(s => s.id === (state.active_scene || lastScene));
-  const eff = state.effect, n = config.fixtures.length;
-  $("liveName").textContent = state.blackout ? "Blackout" : sc ? sc.name : n ? "Réglage à la main" : "Aucun projecteur";
-  $("liveModified").hidden = state.blackout || !sc || !!state.active_scene;
-  $("liveEffect").hidden = state.blackout || !eff;
-  if (eff) $("liveEffect").textContent = "effet : " + (FX.find(f => f[0] === eff.name) || [, ""])[1];
-  paintPools($("livePools"), true);
-  const names = [...new Set(config.fixtures.map(f => colorName(state.fixtures[f.id] || {})))].slice(0, 3).join(", ");
-  $("livePools").setAttribute("aria-label", state.blackout ? "Plateau éteint" : `Plateau : ${names}, master ${Math.round(state.master / 2.55)} %`);
-  if (document.activeElement !== $("master")) $("master").value = state.master;
-  $("masterOut").textContent = Math.round(state.master / 2.55) + " %";
-  for (const b of [$("blackout"), $("hdrBlackout")]) { b.setAttribute("aria-pressed", String(!!state.blackout)); }
-  $("blackout").textContent = state.blackout ? "Rallumer" : "Blackout";
-}
-// apercu des spots : flaque a la couleur et l'intensite reelles (ou a l'effet en cours)
-let lastPaint = 0;
-function paintPools(box, withLevel) {
-  const eff = state.effect, n = config.fixtures.length;
-  if (box.children.length !== n) {
-    box.innerHTML = "";
-    config.fixtures.forEach((fx, i) => box.append(el("span", {}, el("span", { class: "pool" }, el("span", { class: "n" }, String(i + 1))), withLevel ? el("span", { class: "lvl" }) : null)));
-  }
-  config.fixtures.forEach((fx, i) => {
-    const base = state.fixtures[fx.id] || {};
-    const st = eff ? effectValues(eff.name, i, n, fxPhase, base, layoutOf(fx)) : base;
-    const k = level(st), item = box.children[i], pool = item.querySelector(".pool");
-    pool.style.background = poolBg(st, k);
-    pool.style.borderColor = k > 0.01 ? "transparent" : "";
-    const lvl = item.querySelector(".lvl");
-    if (lvl) lvl.textContent = eff ? "effet" : k > 0.004 ? Math.round(k * 100) + " %" : "éteint";
-  });
-}
+/* ---------- ambiances ---------- */
 function nextScene() {
   const sc = state.scenes || [], cur = state.active_scene || lastScene, i = sc.findIndex(s => s.id === cur);
   return sc.length ? sc[i >= 0 ? (i + 1) % sc.length : 0] : null;
@@ -786,37 +792,37 @@ function nextScene() {
 let scenesKey = "";
 function renderScenes() {
   const scenes = state.scenes || [], next = nextScene(), live = state.active_scene;
+  const sc = scenes.find(s => s.id === (live || lastScene));
+  $("liveName").textContent = state.blackout ? "Blackout" : sc ? sc.name : "réglage à la main";
+  $("liveModified").hidden = state.blackout || !sc || !!live;
+  $("liveEffect").hidden = state.blackout || !state.effect;
+  if (state.effect) $("liveEffect").textContent = "effet : " + (FX.find(f => f[0] === state.effect.name) || [, ""])[1];
   $("goBtn").disabled = !next;
-  $("goLabel").textContent = next ? `suivante : ${next.name} · ${state.fade ? "fondu " + state.fade + " s" : "cut"}` : "pas encore de mémoire";
+  $("goLabel").textContent = next ? `ambiance suivante : ${next.name}` : "enregistre d'abord une ambiance";
   $("goKey").hidden = !pref("keys", true);
   for (const b of $("fades").children) b.setAttribute("aria-pressed", String(+b.dataset.f === +state.fade));
   const key = JSON.stringify([scenes.map(s => [s.id, s.name, s.fixtures]), live, next && next.id, config.fixtures.map(f => f.id)]);
   if (key === scenesKey) return;
   scenesKey = key;
   const list = $("sceneList"); list.innerHTML = "";
-  if (!scenes.length) {
-    list.append(el("p", { class: "empty" }, "Pas encore de mémoire. Règle le plateau, puis « Mémoriser ce qui est en scène » : la scène revient ensuite d'un clic, et GO les enchaîne."));
-    return;
-  }
-  scenes.forEach((sc, i) => {
-    const isLive = sc.id === live, isNext = next && sc.id === next.id && !isLive;
+  scenes.forEach((s, i) => {
+    const isLive = s.id === live, isNext = next && s.id === next.id && !isLive;
     const mini = el("span", { class: "mini", "aria-hidden": "true" });
     for (const fx of config.fixtures) {
-      const v = (sc.fixtures || {})[fx.id]; if (!v) continue;
-      const k = (v.dim ?? 0) / 255, [r, g, b] = preview(v), d = el("i");
-      d.style.background = `rgb(${r * k | 0},${g * k | 0},${b * k | 0})`; mini.append(d);
+      const v = (s.fixtures || {})[fx.id]; if (!v) continue;
+      const d = el("i"); d.style.background = (v.dim ?? 0) > 2 ? swatchBg(v, (v.dim ?? 0) / 255) : "#1d1b18"; mini.append(d);
     }
     list.append(el("div", { class: "tile" + (isLive ? " on" : "") },
-      el("button", { class: "pick", type: "button", "aria-pressed": String(isLive), "aria-label": sc.name + (isLive ? ", en scène" : isNext ? ", suivante" : ""), onclick: () => recallScene(sc.id) },
+      el("button", { class: "pick", type: "button", "aria-pressed": String(isLive), "aria-label": s.name + (isLive ? ", en scène" : isNext ? ", suivante" : ""), onclick: () => recallScene(s.id) },
         el("span", { class: "top" }, el("span", { class: "key" }, i < 9 ? String(i + 1) : ""), el("span", { class: "spacer" }),
           isLive ? el("span", { class: "tag live" }, "en scène") : isNext ? el("span", { class: "tag next" }, "suivante") : null),
-        el("span", { class: "name" }, sc.name), mini),
-      el("button", { class: "edit", type: "button", "aria-label": "Modifier " + sc.name, title: "Renommer, remplacer ou supprimer", onclick: () => openSceneDlg(sc) }, "⋯")));
+        el("span", { class: "name" }, s.name), mini),
+      el("button", { class: "edit", type: "button", "aria-label": "Modifier " + s.name, title: "Renommer, remplacer ou supprimer", onclick: () => openSceneDlg(s) }, "⋯")));
   });
 }
 function sceneApi(body) { return api("/api/scene", body).then(poll).catch(e => alert("Erreur : " + e.message)); }
 function recallScene(id) { sceneApi({ action: "recall", id, fade: state.fade }); }
-const go = () => sceneApi({ action: "go", after: lastScene });
+const go = () => { if (nextScene()) sceneApi({ action: "go", after: lastScene }); };
 $("goBtn").onclick = go;
 for (const [v, label] of FADES) {
   const b = el("button", { class: "btn", type: "button", "data-f": v, "aria-pressed": "false" }, label);
@@ -825,92 +831,99 @@ for (const [v, label] of FADES) {
 }
 function openSceneDlg(sc) {
   const dlg = $("sceneDlg"), btns = $("sceneDlgBtns");
-  $("sceneDlgTitle").textContent = sc ? sc.name : "Nouvelle mémoire";
-  $("sceneName").value = sc ? sc.name : "Mémoire " + ((state.scenes || []).length + 1);
+  $("sceneDlgTitle").textContent = sc ? sc.name : "Nouvelle ambiance";
+  $("sceneName").value = sc ? sc.name : "Ambiance " + ((state.scenes || []).length + 1);
   btns.innerHTML = "";
   const done = body => { dlg.close(); sceneApi(body); }, name = () => $("sceneName").value.trim();
   if (sc) btns.append(
     el("button", { class: "btn primary", type: "button", onclick: () => done({ action: "rename", id: sc.id, name: name() }) }, "Renommer"),
-    el("button", { class: "btn", type: "button", onclick: () => done({ action: "save", id: sc.id, name: name() }) }, "Remplacer par ce qui est en scène"),
+    el("button", { class: "btn", type: "button", onclick: () => done({ action: "save", id: sc.id, name: name() }) }, "Remplacer par la lumière actuelle"),
     el("button", { class: "btn", type: "button", onclick: () => { if (confirm(`Supprimer « ${sc.name} » ?`)) done({ action: "delete", id: sc.id }); } }, "Supprimer"));
-  else btns.append(el("button", { class: "btn primary", type: "button", onclick: () => done({ action: "save", name: name() }) }, "Mémoriser"));
+  else btns.append(el("button", { class: "btn primary", type: "button", onclick: () => done({ action: "save", name: name() }) }, "Enregistrer"));
   btns.append(el("span", { class: "spacer" }), el("button", { class: "btn quiet", type: "button", onclick: () => dlg.close() }, "Annuler"));
   $("sceneName").onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); btns.querySelector("button").click(); } };
   dlg.showModal(); $("sceneName").select();
 }
 $("sceneNew").onclick = () => openSceneDlg(null);
+
+/* ---------- en-tete et selection ---------- */
 $("master").oninput = e => { state.master = +e.target.value; queue({ master: state.master }); render(); };
 $("blackout").onclick = toggleBlackout;
-$("hdrBlackout").onclick = toggleBlackout;
+$("selAll").onclick = () => { allIds().forEach(id => selected.add(id)); render(); };
+$("selNone").onclick = () => { selected.clear(); render(); };
+const narrow = matchMedia("(max-width: 760px)");
+narrow.addEventListener("change", () => render());
+$("gotoTools").onclick = () => { $("tools").scrollIntoView({ behavior: calm ? "auto" : "smooth" }); $("selDim").focus({ preventScroll: true }); };
+function renderHeader() {
+  if (document.activeElement !== $("master")) $("master").value = state.master;
+  $("masterOut").textContent = Math.round(state.master / 2.55) + " %";
+  $("blackout").setAttribute("aria-pressed", String(!!state.blackout));
+  $("blackout").textContent = state.blackout ? "Rallumer" : "Blackout";
+  const n = selected.size, names = config.fixtures.filter(f => selected.has(f.id)).map(f => f.name);
+  $("selCount").textContent = n === 0 ? "Aucun spot coché" : n === config.fixtures.length ? `Tous les spots cochés (${n})`
+    : `${n} spot${n > 1 ? "s" : ""} coché${n > 1 ? "s" : ""} : ${names.join(", ")}`;
+  $("selbar").classList.toggle("has", n > 0);
+  $("selNone").disabled = n === 0; $("selAll").disabled = n === config.fixtures.length;
+  $("gotoTools").hidden = n === 0 || !narrow.matches;   // sur telephone, le panneau est sous les cartes
+}
 
-// "a la main" : faders bruts et couleurs sur tous les spots
-let handFaders = {}, inspFaders = {};
-function presentChannels() {
-  const lay = new Set(config.fixtures.flatMap(layoutOf));
+/* ---------- cartes des spots ---------- */
+let cardFaders = {};
+function presentChannels(ids) {
+  const lay = new Set(ids.flatMap(id => layoutOf(fxById(id) || {})));
   return CHANNELS.filter(c => !c[3] || lay.has(c[3]));
 }
-function buildRawFaders() {
-  const chans = presentChannels();
-  $("handFaders").innerHTML = ""; handFaders = {};
-  handFaders.dim = makeFader({ label: "Intensité", cls: "big", fill: "#d9d2c5", onInput: v => setDim(allIds(), v) });
-  $("handFaders").append(handFaders.dim.el);
-  $("inspRaw").innerHTML = ""; inspFaders = {};
-  for (const [k, name, color] of chans) {
-    handFaders[k] = makeFader({ label: name, fill: color, onInput: v => setChannel(allIds(), k, v) });
-    $("handFaders").append(handFaders[k].el);
-    inspFaders[k] = makeFader({ label: name, cls: "slim", fill: color, onInput: v => setChannel([...selected], k, v) });
-    $("inspRaw").append(inspFaders[k].el);
-  }
+function buildCards() {
+  const box = $("cards"); box.innerHTML = ""; cardFaders = {};
+  if (!config.fixtures.length) { box.append(el("p", { class: "empty" }, "Aucun projecteur. Va dans Réglages > Projecteurs pour les ajouter ou les chercher.")); return; }
+  config.fixtures.forEach((fx, i) => {
+    const faders = {};
+    faders.dim = makeFader({ label: `Luminosité de ${fx.name}`, short: "Lum", cls: "mini", fill: "#d9d2c5", onInput: v => setDim([fx.id], v) });
+    for (const [k, name, color] of presentChannels([fx.id])) faders[k] = makeFader({ label: `${name} de ${fx.name}`, short: SHORT[k], cls: "mini", fill: color, onInput: v => setChannel([fx.id], k, v) });
+    cardFaders[fx.id] = faders;
+    const card = el("article", { class: "card", "data-id": fx.id, "aria-label": fx.name },
+      el("button", { class: "toggle", type: "button", "aria-pressed": "false", onclick: () => toggleSel(fx.id) },
+        el("span", { class: "bar" }, el("span", { class: "box", html: CHECK }), el("span", { class: "nm" }, fx.name), el("span", { class: "st" })),
+        el("span", { class: "swatch" }, el("span", { class: "cap" }))),
+      el("div", { class: "minis" }, ...Object.values(faders).map(f => f.el)),
+      el("div", { class: "foot" }, el("button", { class: "btn quiet", type: "button", onclick: () => queue({ identify: [fx.id] }) }, "Clignoter")));
+    box.append(card);
+  });
 }
-for (const b of $("handTabs").children) b.onclick = () => {
-  for (const x of $("handTabs").children) x.setAttribute("aria-selected", String(x === b));
-  $("handRaw").hidden = b.dataset.hand !== "raw"; $("handColors").hidden = b.dataset.hand !== "colors";
-};
-for (const [name, r, g, b] of PRESETS) {
-  const [h, s] = rgbToHs(r, g, b);
-  const mk = ids => { const sw = el("button", { class: "sw", type: "button", "aria-label": name, title: name }); sw.style.background = `rgb(${r},${g},${b})`; sw.onclick = () => applyHs(ids(), h, s); return sw; };
-  $("handSwatches").append(mk(allIds)); $("inspSwatches").append(mk(() => [...selected]));
-}
-for (const k of WHITES) {
-  const [r, g, b] = kelvinToRgb(k), wb = el("button", { class: "wb", type: "button", "aria-label": `Blanc ${k} K` }, String(k));
-  wb.style.background = `rgb(${r},${g},${b})`; wb.onclick = () => applyWhite(allIds(), k, 0);
-  $("handWhites").append(wb);
-}
-for (const [id, label] of FX) {
-  const b = el("button", { class: "btn", type: "button", "data-fx": id, "aria-pressed": "false" }, label);
-  b.onclick = () => { state.effect = state.effect && state.effect.name === id ? null : { name: id, speed: +$("fxSpeed").value }; if (state.effect) fxPhase = 0; queue({ effect: state.effect }); render(); };
-  $("fxButtons").append(b);
-}
-$("fxSpeed").oninput = e => { if (state.effect) { state.effect.speed = +e.target.value; queue({ effect: state.effect }); } renderFx(); };
-function renderFx() {
-  for (const b of $("fxButtons").children) b.setAttribute("aria-pressed", String(!!state.effect && state.effect.name === b.dataset.fx));
-  const sp = $("fxSpeed");
-  if (state.effect && document.activeElement !== sp) sp.value = state.effect.speed;
-  $("fxSpeedOut").textContent = (+sp.value).toFixed(1).replace(".", ",") + "×";
-}
-function renderHand() {
-  const st = state.fixtures[allIds()[0]] || {};
-  if (handFaders.dim) handFaders.dim.set(st.dim ?? 0);
-  for (const [k, f] of Object.entries(handFaders)) if (k !== "dim") f.set(st[k] ?? 0);
-  renderFx();
+function renderCards() {
+  config.fixtures.forEach((fx, i) => {
+    const card = $("cards").querySelector(`.card[data-id="${fx.id}"]`); if (!card) return;
+    const base = state.fixtures[fx.id] || {}, st = shown(fx, i), k = level(st), on = selected.has(fx.id);
+    card.classList.toggle("sel", on);
+    const tg = card.querySelector(".toggle");
+    tg.setAttribute("aria-pressed", String(on));
+    const txt = k > 0.004 ? `${colorName(st)}, ${Math.round(k * 100)} %` : "éteint";
+    tg.setAttribute("aria-label", `${fx.name} : ${txt}. ${on ? "Coché" : "Pas coché"}`);
+    card.querySelector(".st").textContent = on ? "coché" : "";
+    const sw = card.querySelector(".swatch");
+    sw.classList.toggle("off", k <= 0.004);
+    sw.style.background = k > 0.004 ? swatchBg(st, k) : "";
+    sw.querySelector(".cap").textContent = state.effect ? "effet en cours" : txt;
+    const f = cardFaders[fx.id];
+    if (f) { f.dim.set(base.dim ?? 0); for (const [c, fd] of Object.entries(f)) if (c !== "dim") fd.set(base[c] ?? 0); }
+  });
 }
 
-/* ---------- plateau ---------- */
-let arrange = false, moving = null;
+/* ---------- plan ---------- */
+let arrange = false, moving = null, placeMsg = "";
 const grid = () => config.grid || { cols: 12, rows: 7 };
 function positions() {
-  // case de chaque spot ; ceux jamais places sont repartis sur l'avant-dernier rang
+  // case de chaque spot ; ceux jamais places (ou sur une case deja prise) vont sur la premiere case libre
   const { cols, rows } = grid(), n = config.fixtures.length, out = {}, taken = new Set();
   for (const f of config.fixtures) if (Number.isInteger(f.x) && Number.isInteger(f.y)) {
     const p = [Math.min(f.x, cols - 1), Math.min(f.y, rows - 1)];
-    if (taken.has(p.join())) continue;   // deux spots sur une meme case (grille reduite) : le second est replace plus bas
+    if (taken.has(p.join())) continue;
     out[f.id] = p; taken.add(p.join());
   }
   let i = 0;
   for (const f of config.fixtures) {
     if (out[f.id]) continue;
-    let x = Math.min(cols - 1, Math.floor((i + 0.5) * cols / n)), y = Math.max(0, rows - 2);
-    let tries = 0;
+    let x = Math.min(cols - 1, Math.floor((i + 0.5) * cols / n)), y = Math.max(0, rows - 2), tries = 0;
     while (taken.has(x + "," + y) && tries++ < cols * rows) { x = (x + 1) % cols; if (x === 0) y = (y + rows - 1) % rows; }
     out[f.id] = [x, y]; taken.add(x + "," + y); i++;
   }
@@ -922,15 +935,15 @@ function buildPlan() {
   for (const s of g.querySelectorAll(".spot")) s.remove();
   config.fixtures.forEach((fx, i) => {
     const b = el("button", { class: "spot", type: "button", "data-id": fx.id, "aria-pressed": "false" },
-      el("span", { class: "pool" }, el("span", { class: "n" }, String(i + 1))), el("span", { class: "lvl" }));
+      el("span", { class: "disc" }, el("span", { class: "n" }, String(i + 1)), el("span", { class: "ck", html: CHECK })), el("span", { class: "lb" }, fx.name));
     b.onclick = () => {
-      if (arrange) { moving = moving === fx.id ? null : fx.id; render(); return; }
-      selected.has(fx.id) ? selected.delete(fx.id) : selected.add(fx.id); render();
+      if (arrange) { moving = moving === fx.id ? null : fx.id; placeMsg = ""; render(); return; }
+      toggleSel(fx.id);
     };
     b.onkeydown = e => {   // en mode Disposer : fleches pour deplacer le spot case par case
       if (!arrange || moving !== fx.id) return;
-      const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
       if (e.key === "Escape" || e.key === "Enter") { moving = null; render(); e.preventDefault(); return; }
+      const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
       if (!d) return;
       e.preventDefault();
       const [x, y] = positions()[fx.id], nx = x + d[0], ny = y + d[1];
@@ -944,13 +957,12 @@ function buildPlan() {
     cells.append(el("button", { type: "button", tabindex: -1, "aria-label": `Case ${x + 1} depuis jardin, rang ${y + 1} depuis le lointain`, onclick: () => moving && place(moving, x, y) }));
   $("colOut").textContent = cols; $("rowOut").textContent = rows;
   $("gridSize").textContent = `grille ${cols} × ${rows}`;
-  for (const id of [...selected]) if (!config.fixtures.some(f => f.id === id)) selected.delete(id);
+  for (const id of [...selected]) if (!fxById(id)) selected.delete(id);
 }
-let placeMsg = "";
 function place(id, x, y, keep) {   // keep : deplacement aux fleches, le spot reste a deplacer
   const pos = positions(), other = config.fixtures.find(f => f.id !== id && pos[f.id][0] === x && pos[f.id][1] === y);
   if (other) { placeMsg = `Case occupée par ${other.name}.`; render(); return; }
-  const fx = config.fixtures.find(f => f.id === id); fx.x = x; fx.y = y; placeMsg = "";
+  const fx = fxById(id); fx.x = x; fx.y = y; placeMsg = "";
   if (!keep) moving = null;
   render();
   api("/api/layout", { positions: { [id]: [x, y] } }).then(poll);
@@ -964,95 +976,104 @@ function resizeGrid(dc, dr) {
 $("colMinus").onclick = () => resizeGrid(-1, 0); $("colPlus").onclick = () => resizeGrid(1, 0);
 $("rowMinus").onclick = () => resizeGrid(0, -1); $("rowPlus").onclick = () => resizeGrid(0, 1);
 $("arrangeBtn").onclick = () => { arrange = !arrange; moving = null; placeMsg = ""; render(); };
-$("selAll").onclick = $("inspAll").onclick = () => { allIds().forEach(id => selected.add(id)); render(); };
-$("selNone").onclick = $("deselect").onclick = () => { selected.clear(); render(); };
 function renderPlan() {
-  const { cols, rows } = grid(), pos = positions(), eff = state.effect, n = config.fixtures.length;
+  const { cols, rows } = grid(), pos = positions();
   config.fixtures.forEach((fx, i) => {
     const b = $("grid").querySelector(`.spot[data-id="${fx.id}"]`); if (!b) return;
-    const [x, y] = pos[fx.id], base = state.fixtures[fx.id] || {};
-    const st = eff ? effectValues(eff.name, i, n, fxPhase, base, layoutOf(fx)) : base, k = level(st);
+    const [x, y] = pos[fx.id], st = shown(fx, i), k = level(st), on = selected.has(fx.id);
     b.style.left = ((x + 0.5) / cols * 100) + "%"; b.style.top = ((y + 0.5) / rows * 100) + "%";
-    b.querySelector(".pool").style.background = poolBg(st, k);
-    b.querySelector(".pool").style.borderColor = k > 0.01 ? "transparent" : "";
-    b.querySelector(".lvl").textContent = eff ? "effet" : k > 0.004 ? Math.round((base.dim ?? 0) / 2.55) + " %" : "éteint";
-    const on = arrange ? moving === fx.id : selected.has(fx.id);
-    b.setAttribute("aria-pressed", String(on));
+    const disc = b.querySelector(".disc");
+    disc.classList.toggle("off", k <= 0.004);
+    disc.style.background = k > 0.004 ? swatchBg(st, k) : "";
+    b.setAttribute("aria-pressed", String(arrange ? moving === fx.id : on));
     b.classList.toggle("moving", arrange && moving === fx.id);
-    b.setAttribute("aria-label", `${fx.name}, ${k > 0.004 ? colorName(base) + ", " + Math.round(k * 100) + " %" : "éteint"}`);
+    b.setAttribute("aria-label", `${fx.name} : ${k > 0.004 ? colorName(st) + ", " + Math.round(k * 100) + " %" : "éteint"}${arrange ? "" : on ? ". Coché" : ". Pas coché"}`);
   });
   $("arrangeBtn").setAttribute("aria-pressed", String(arrange));
   $("arrangeBar").hidden = !arrange; $("cells").hidden = !arrange;
-  const mv = config.fixtures.find(f => f.id === moving);
+  const mv = fxById(moving);
   $("arrangeHint").textContent = placeMsg || (mv ? `${mv.name} : touche sa nouvelle case (ou flèches, puis Entrée).` : "Touche un spot, puis la case où il est accroché dans la salle.");
   $("colMinus").disabled = cols <= 4; $("colPlus").disabled = cols >= 24; $("rowMinus").disabled = rows <= 3; $("rowPlus").disabled = rows >= 14;
 }
 
-// inspecteur : reglage de la selection
-const dimF = makeFader({ label: "Intensité", cls: "big", fill: "#d9d2c5", onInput: v => setDim([...selected], v) });
-$("dimFader").append(dimF.el);
-let mode = "color", lastSel = "";
-for (const b of $("modeTabs").children) b.onclick = () => {
-  mode = b.dataset.mode;
-  if (mode === "white" && selected.size) { const st = state.fixtures[[...selected][0]] || {}; applyWhite([...selected], st.k || 3200, st.tint || 0); }
-  render();
-};
-const field = $("field");
-function fieldPick(e) {
-  const r = field.getBoundingClientRect();
-  const x = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)), y = Math.max(0, Math.min(1, (e.clientY - r.top) / r.height));
-  applyHs([...selected], Math.round(x * 359), Math.round((1 - y) * 255));
+/* ---------- panneau « pour les spots coches » ---------- */
+const sel = () => config.fixtures.filter(f => selected.has(f.id)).map(f => f.id);   // dans l'ordre des spots
+let selRawFaders = {};
+function buildSelRaw() {
+  $("selRaw").innerHTML = ""; selRawFaders = {};
+  for (const [k, name, color] of presentChannels(allIds())) {
+    selRawFaders[k] = makeFader({ label: `${name} des spots cochés`, short: name, fill: color, onInput: v => setChannel(sel(), k, v) });
+    $("selRaw").append(selRawFaders[k].el);
+  }
 }
-field.addEventListener("pointerdown", e => { field.setPointerCapture(e.pointerId); field.dataset.drag = "1"; fieldPick(e); });
-field.addEventListener("pointermove", e => { if (field.dataset.drag) fieldPick(e); });
-field.addEventListener("pointerup", () => delete field.dataset.drag);
-field.addEventListener("keydown", e => {
-  const st = state.fixtures[[...selected][0]] || {}; let h = st.h ?? 0, s = st.s ?? 0;
-  if (e.key === "ArrowLeft") h = (h + 355) % 360; else if (e.key === "ArrowRight") h = (h + 5) % 360;
-  else if (e.key === "ArrowUp") s = Math.min(255, s + 13); else if (e.key === "ArrowDown") s = Math.max(0, s - 13); else return;
-  e.preventDefault(); applyHs([...selected], h, s);
-});
+for (const [name, r, g, b] of PRESETS) {
+  const [dr, dg, db] = displayRgb({ r, g, b });
+  const sw = el("button", { class: "sw", type: "button", "aria-label": name }, el("i"), name);
+  sw.querySelector("i").style.background = `rgb(${dr},${dg},${db})`;
+  sw.onclick = () => applyColor(sel(), r, g, b);
+  $("swatches").append(sw);
+}
+for (const [k, label] of QUICK_WHITES) {
+  const [r, g, b] = displayRgb(whiteVals(["R", "G", "B", "L"], k));
+  const q = el("button", { type: "button", "aria-label": `Blanc ${label.toLowerCase()} (${k} K)` }, label, el("br"), el("small", {}, k + " K"));
+  q.style.background = `rgb(${r},${g},${b})`;
+  q.onclick = () => applyWhite(sel(), k, 0);
+  $("quickWhites").append(q);
+}
 const temp = $("temp");
-temp.style.background = `linear-gradient(to right, ${WHITES.map(k => { const [r, g, b] = kelvinToRgb(k); return `rgb(${r},${g},${b}) ${(k - KMIN) / (KMAX - KMIN) * 100}%`; }).join(", ")})`;
+temp.style.background = `linear-gradient(to right, ${[2700, 3200, 4000, 5000, 5600, 6500].map(k => { const [r, g, b] = displayRgb(whiteVals(["R", "G", "B", "L"], k)); return `rgb(${r},${g},${b}) ${(k - KMIN) / (KMAX - KMIN) * 100}%`; }).join(", ")})`;
 function tempPick(e) {
   const r = temp.getBoundingClientRect(), x = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
-  applyWhite([...selected], Math.round((KMIN + x * (KMAX - KMIN)) / 50) * 50);
+  applyWhite(sel(), KMIN + x * (KMAX - KMIN));
 }
 temp.addEventListener("pointerdown", e => { temp.setPointerCapture(e.pointerId); temp.dataset.drag = "1"; tempPick(e); });
 temp.addEventListener("pointermove", e => { if (temp.dataset.drag) tempPick(e); });
 temp.addEventListener("pointerup", () => delete temp.dataset.drag);
 temp.addEventListener("keydown", e => {
-  const k = (state.fixtures[[...selected][0]] || {}).k || 3200, d = { ArrowLeft: -100, ArrowDown: -100, ArrowRight: 100, ArrowUp: 100 }[e.key];
-  if (d) { e.preventDefault(); applyWhite([...selected], Math.max(KMIN, Math.min(KMAX, k + d))); }
+  const k = (state.fixtures[sel()[0]] || {}).k || 3200, d = { ArrowLeft: -100, ArrowDown: -100, ArrowRight: 100, ArrowUp: 100 }[e.key];
+  if (d) { e.preventDefault(); applyWhite(sel(), k + d); }
 });
-$("tint").oninput = e => { const st = state.fixtures[[...selected][0]] || {}; applyWhite([...selected], st.k || 3200, +e.target.value); };
-$("identify").onclick = () => queue({ identify: [...selected] });
-function renderInspector() {
-  const ids = [...selected], n = ids.length;
-  $("inspEmpty").hidden = n > 0; $("inspBody").hidden = n === 0;
-  const names = ids.map(id => (config.fixtures.find(f => f.id === id) || {}).name);
-  $("inspTitle").textContent = n === 0 ? "Rien de sélectionné" : n === config.fixtures.length ? "Tout le plateau" : n === 1 ? names[0] : `${n} spots`;
-  const fx1 = config.fixtures.find(f => f.id === ids[0]);
-  $("inspSub").textContent = n === 1 && fx1 ? `univers ${fx1.universe}, adresse ${fx1.address} · ${fx1.layout}` : n > 1 && n < config.fixtures.length ? names.join(", ") + " · réglés ensemble" : "";
+$("tint").oninput = e => { const st = state.fixtures[sel()[0]] || {}; applyWhite(sel(), st.k || 3200, +e.target.value); };
+$("selDim").oninput = e => setDim(sel(), +e.target.value);
+$("selOff").onclick = () => setDim(sel(), 0);
+$("selHalf").onclick = () => setDim(sel(), 128);
+$("selFull").onclick = () => setDim(sel(), 255);
+$("identify").onclick = () => queue({ identify: sel() });
+function renderTools() {
+  const ids = sel(), n = ids.length, names = ids.map(id => fxById(id).name);
+  $("tools").classList.toggle("off", n === 0);
+  $("toolsWhy").hidden = n > 0;
+  for (const c of $("tools").querySelectorAll(".body button, .body input, .body [tabindex]")) c.toggleAttribute("disabled", n === 0);
+  $("temp").tabIndex = n ? 0 : -1;
+  $("toolsWho").textContent = n === 0 ? "" : n === config.fixtures.length ? "Tout le plateau" : n <= 3 ? names.join(", ") : `${n} spots`;
   if (!n) return;
   const st = state.fixtures[ids[0]] || {};
-  if (ids.join() !== lastSel) { lastSel = ids.join(); mode = st.k ? "white" : "color"; }   // l'onglet suit le spot quand la selection change
-  dimF.set(st.dim ?? 0);
-  for (const [k, f] of Object.entries(inspFaders)) f.set(st[k] ?? 0);
-  for (const b of $("modeTabs").children) b.setAttribute("aria-selected", String(b.dataset.mode === mode));
-  $("modeColor").hidden = mode !== "color"; $("modeWhite").hidden = mode !== "white";
-  const [r, g, b] = preview(st); $("previewDot").style.background = `rgb(${r},${g},${b})`;
-  const mark = $("fieldMark");
-  mark.style.left = ((st.h ?? 0) / 359 * 100) + "%"; mark.style.top = ((1 - (st.s ?? 0) / 255) * 100) + "%";
-  const [mr, mg, mb] = hsToRgb(st.h ?? 0, st.s ?? 0); mark.style.background = `rgb(${mr},${mg},${mb})`;
-  field.setAttribute("aria-valuetext", colorName(st) + `, saturation ${Math.round((st.s ?? 0) / 2.55)} %`);
-  const k = st.k || 3200, tint = st.tint || 0;
-  $("tempMark").style.left = ((k - KMIN) / (KMAX - KMIN) * 100) + "%";
-  temp.setAttribute("aria-valuenow", k); temp.setAttribute("aria-valuetext", k + " K");
-  $("kOut").textContent = k + " K";
+  if (document.activeElement !== $("selDim")) $("selDim").value = st.dim ?? 0;
+  $("selDimOut").textContent = Math.round((st.dim ?? 0) / 2.55) + " %";
+  for (const [k, f] of Object.entries(selRawFaders)) f.set(st[k] ?? 0);
+  const k = st.k || 0, tint = st.tint || 0;
+  $("tempMark").hidden = !k;
+  if (k) { $("tempMark").style.left = ((k - KMIN) / (KMAX - KMIN) * 100) + "%"; temp.setAttribute("aria-valuenow", k); temp.setAttribute("aria-valuetext", k + " K, " + colorName(st)); }
+  $("kOut").textContent = k ? `${colorName(st)} · ${k} K` : "";
   if (document.activeElement !== $("tint")) $("tint").value = tint;
-  const tt = tint === 0 ? "neutre" : tint < 0 ? `plus vert ${-tint} %` : `plus rose ${tint} %`;
+  const tt = tint === 0 ? "neutre" : tint < 0 ? `plus vert (${-tint})` : `plus rose (${tint})`;
   $("tintOut").textContent = tt; $("tint").setAttribute("aria-valuetext", tt);
+}
+
+/* ---------- effets ---------- */
+for (const [id, label] of FX) {
+  const b = el("button", { class: "btn", type: "button", "data-fx": id, "aria-pressed": "false" }, label);
+  b.onclick = () => { state.effect = state.effect && state.effect.name === id ? null : { name: id, speed: +$("fxSpeed").value }; if (state.effect) fxPhase = 0; queue({ effect: state.effect }); render(); };
+  $("fxButtons").append(b);
+}
+$("fxButtons").append(Object.assign(el("button", { class: "btn quiet", type: "button", id: "fxStop" }, "Arrêter l'effet"), { onclick: () => { state.effect = null; queue({ effect: null }); render(); } }));
+$("fxSpeed").oninput = e => { if (state.effect) { state.effect.speed = +e.target.value; queue({ effect: state.effect }); } renderFx(); };
+function renderFx() {
+  for (const b of $("fxButtons").querySelectorAll("[data-fx]")) b.setAttribute("aria-pressed", String(!!state.effect && state.effect.name === b.dataset.fx));
+  $("fxStop").disabled = !state.effect;
+  const sp = $("fxSpeed");
+  if (state.effect && document.activeElement !== sp) sp.value = state.effect.speed;
+  $("fxSpeedOut").textContent = (+sp.value).toFixed(1).replace(".", ",") + "×";
 }
 
 /* ---------- reglages ---------- */
@@ -1069,9 +1090,9 @@ function loadSettings() {
   if (!config) return;
   settingsLoaded = true;
   $("cfgTarget").value = config.target_ip; $("cfgPort").value = config.port; $("cfgFps").value = config.fps;
-  const sel = $("cfgBind"); sel.innerHTML = ""; sel.append(el("option", { value: "" }, "Automatique"));
-  for (const ip of new Set([...(window.localIps || []), config.bind_ip].filter(Boolean))) sel.append(el("option", { value: ip }, ip));
-  sel.value = config.bind_ip || "";
+  const s = $("cfgBind"); s.innerHTML = ""; s.append(el("option", { value: "" }, "Automatique"));
+  for (const ip of new Set([...(window.localIps || []), config.bind_ip].filter(Boolean))) s.append(el("option", { value: ip }, ip));
+  s.value = config.bind_ip || "";
   $("fxRows").innerHTML = ""; config.fixtures.forEach(f => $("fxRows").append(fxRow(f)));
   const inp = config.input || {};
   $("inEnabled").checked = !!inp.enabled; $("inUniverse").value = inp.universe ?? 1;
@@ -1124,7 +1145,6 @@ $("addFx").onclick = () => {
 $("keysOn").onchange = e => { setPref("keys", e.target.checked); render(); };
 
 // decouverte
-function broadcastOf(ip) { const p = ip.split("."); return (p[0] === "2" || p[0] === "10") ? `${p[0]}.255.255.255` : `${p[0]}.${p[1]}.${p[2]}.255`; }
 function alreadyPatched(d) { return readRows().some(f => f.universe === d.universe && f.address === d.address); }
 function addDevice(d) {
   if (alreadyPatched(d)) return;
@@ -1186,12 +1206,12 @@ const midi = { access: null, name: "", vals: {}, order: [], error: "" };
 function targetGroups() {
   const fx = config.fixtures, sc = state.scenes || [];
   return [
-    ["Intensité", [["dim:all", "Tous"]].concat(fx.map(f => ["dim:" + f.id, f.name]))],
+    ["Luminosité", [["dim:all", "Tous"]].concat(fx.map(f => ["dim:" + f.id, f.name]))],
     ["Couleur", [["white:all", "Blanc chaud → froid"], ["hue:all", "Teinte"]]],
-    ["Transition vers une mémoire", sc.map(s => ["xfade:" + s.id, "→ " + s.name])],
-    ["Lancer une mémoire (GO à mi-course)", sc.map(s => ["scene:" + s.id, "GO " + s.name])],
+    ["Transition vers une ambiance", sc.map(s => ["xfade:" + s.id, "→ " + s.name])],
+    ["Lancer une ambiance (GO à mi-course)", sc.map(s => ["scene:" + s.id, "GO " + s.name])],
     ["Effets", FX.map(([id, label]) => ["fx:" + id, label]).concat([["fxspeed", "Vitesse"]])],
-    ["Général", [["master", "Master"], ["blackout", "Blackout"], ["", "Rien"]]],
+    ["Général", [["master", "Lumière générale"], ["blackout", "Blackout"], ["", "Rien"]]],
   ].filter(g => g[1].length);
 }
 function targetLabel(t) {
@@ -1202,7 +1222,8 @@ function targetLabel(t) {
 const curMap = () => (source === "mq" ? (config.input || {}).map : (config.input || {}).midi_map) || {};
 function stripKeys() {
   if (source === "mq") return Array.from({ length: 10 }, (_, i) => String(i + 1));
-  return [...new Set(Object.keys(curMap()).concat(midi.order))].sort((a, b) => (a[0] === b[0] ? +a.slice(a[0] === "c" ? 2 : 1) - +b.slice(b[0] === "c" ? 2 : 1) : a < b ? -1 : 1));
+  const num = k => +k.replace(/\D/g, "");
+  return [...new Set(Object.keys(curMap()).concat(midi.order))].sort((a, b) => a[0] === b[0] ? num(a) - num(b) : a < b ? -1 : 1);
 }
 const stripValue = k => source === "mq" ? ((input && input.values) || [])[+k - 1] ?? 0 : Math.round((midi.vals[k] ?? 0) * 255 / 127);
 const stripLabel = k => source === "mq" ? k : k.startsWith("cc") ? "CC " + k.slice(2) : "Note " + k.slice(1);
@@ -1217,7 +1238,7 @@ function renderConsole() {
   // une colonne s'allume quand son fader bouge ; en mode Apprendre, elle se selectionne
   for (const k of stripKeys()) {
     const v = stripValue(k), id = source + k;
-    if (lastVals[id] !== undefined && lastVals[id] !== v) { liveUntil[id] = now + 1500; if (learn) { strip = k; learn = false; } }
+    if (lastVals[id] !== undefined && lastVals[id] !== v) { liveUntil[id] = now + 1500; if (learn) { strip = k; learn = false; stripsKey = ""; } }
     lastVals[id] = v;
   }
   const seen = input.seen, mqOk = (config.input || {}).enabled && seen !== null && seen < 3;
@@ -1242,7 +1263,6 @@ function renderConsole() {
       box.append(el("button", { class: "strip", type: "button", "data-k": k, "aria-pressed": String(k === strip), "aria-label": `Fader ${stripLabel(k)} : ${targetLabel(t)}`, onclick: () => { strip = k; stripsKey = ""; renderConsole(); } },
         el("span", { class: "no" }, stripLabel(k)), el("span", { class: "rail", "aria-hidden": "true" }, el("i"), el("b")), el("span", { class: "v" }), el("span", { class: "as" }, targetLabel(t))));
     }
-    // affectation du fader choisi
     $("assignTitle").textContent = strip === null ? "Aucun fader" : "Fader " + stripLabel(strip);
     $("assignNow").textContent = strip === null ? "" : "commande : " + targetLabel(curMap()[strip] || "");
     const groups = $("assignGroups"); groups.innerHTML = "";
@@ -1253,7 +1273,7 @@ function renderConsole() {
     }
   }
   for (const b of $("strips").querySelectorAll(".strip")) {
-    const k = b.dataset.k, v = stripValue(k), p = v / 255 * 100;
+    const k = b.dataset.k, p = stripValue(k) / 255 * 100;
     b.querySelector(".rail i").style.height = `calc(${p}% - ${p * 0.02}px)`;
     b.querySelector(".rail b").style.bottom = `calc(${p}%)`;
     b.querySelector(".v").textContent = Math.round(p) + " %";
@@ -1305,20 +1325,18 @@ function renderChips() {
 }
 function render() {
   if (!config || !state) return;
-  renderChips();
-  if (view === "regie") { renderLive(); renderScenes(); renderHand(); }
-  if (view === "plateau") { renderPlan(); renderInspector(); }
-  if (view === "reglages") { renderDiscovery(); if (pane === "console") renderConsole(); }
-  for (const b of [$("blackout"), $("hdrBlackout")]) b.setAttribute("aria-pressed", String(!!state.blackout));
+  renderChips(); renderHeader();
+  if (view !== "reglages") { renderScenes(); renderTools(); renderFx(); if (view === "spots") renderCards(); else renderPlan(); }
+  else { renderDiscovery(); if (pane === "console") renderConsole(); }
 }
-// animation de l'apercu pendant un effet : au plus 3 images par seconde (pas de flash a l'ecran),
+// animation des apercus pendant un effet : au plus 3 images par seconde (pas de flash a l'ecran),
 // et rien si le systeme demande moins d'animations
 const calm = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
-let fxClock = performance.now();
+let fxClock = performance.now(), lastPaint = 0;
 (function tick(now) {
   if (state && config && state.effect) {
     fxPhase += (now - fxClock) / 1000 * (state.effect.speed || 1);
-    if (!calm && now - lastPaint > 340) { lastPaint = now; if (view === "regie") paintPools($("livePools"), true); if (view === "plateau") renderPlan(); }
+    if (!calm && now - lastPaint > 340) { lastPaint = now; if (view === "spots") renderCards(); if (view === "plan") renderPlan(); }
   }
   fxClock = now;
   requestAnimationFrame(tick);
@@ -1326,11 +1344,10 @@ let fxClock = performance.now();
 
 /* ---------- clavier ---------- */
 document.addEventListener("keydown", e => {
-  if (!pref("keys", true) || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (!pref("keys", true) || e.ctrlKey || e.metaKey || e.altKey || view === "reglages") return;
   if (e.target.closest("input,select,textarea,[role=slider],button,a,dialog,summary") && e.key !== "Escape") return;
-  if (view === "reglages") return;
   if (e.key === " ") { e.preventDefault(); go(); }
-  else if (/^[1-9]$/.test(e.key)) { const sc = (state.scenes || [])[+e.key - 1]; if (sc) recallScene(sc.id); }
+  else if (/^[1-9]$/.test(e.key)) { const s = (state.scenes || [])[+e.key - 1]; if (s) recallScene(s.id); }
   else if (e.key === "b" || e.key === "B") toggleBlackout();
   else if (e.key === "Escape" && !$("sceneDlg").open) { selected.clear(); arrange = false; moving = null; render(); }
 });

@@ -37,24 +37,37 @@ Le bouton **Identifier** fait clignoter un spot ; le **testeur de canal** permet
 
 ## Utilisation
 
-Trois écrans : **Régie**, **Plateau**, et **Réglages** (bouton à part).
+Pensé pour quelqu'un qui n'y connaît rien en lumière : on coche des spots, puis on choisit ce qu'ils font.
 
-- **Régie** : ce qui est **en scène** (nom de la mémoire, aperçu des spots), **Master** et **Blackout** côte à côte,
-  un gros bouton **GO** qui lance la mémoire suivante (barre d'espace), les mémoires, et en bas
-  « à la main, sur tout le plateau » : **faders bruts** (intensité, rouge, vert, bleu, lime…), couleurs, blancs et effets.
-- **Plateau** : plan vu du dessus (lointain en haut, public en bas, jardin à gauche, cour à droite).
-  Touche des spots pour les régler : intensité, **Couleur** (champ teinte/saturation) ou **Blanc**
-  (température 2700–6500 K + correction plus vert / plus rose), et faders bruts.
-  **Disposer les spots** : touche un spot puis sa case (ou flèches), et règle le nombre de colonnes et de rangs.
-- Raccourcis : Espace = GO, 1 à 9 = mémoire, B = blackout, Échap = tout désélectionner (désactivables dans Réglages > Clavier).
+- **Spots** : une carte par spot, avec sa vraie couleur en grand, son état en mots (« blanc chaud, 80 % ») et ses petits
+  faders (luminosité, rouge, vert, bleu, lime). Les faders d'une carte ne règlent que ce spot.
+  Toucher le haut de la carte le **coche** (bandeau ambre et coche) ; la barre « N spots cochés » dit toujours qui est coché.
+- **Pour les spots cochés** (panneau à droite, ou bouton « Régler ↓ » sur téléphone) : luminosité, couleurs nommées,
+  blancs **chaud / neutre / froid** (ou la bande de 2700 à 6500 K), correction « plus vert / plus rose » si la peau
+  paraît mal, canaux un par un pour les experts, et « Faire clignoter » pour repérer les spots dans la salle.
+  Sans spot coché, le panneau est grisé et explique quoi faire.
+- **Plan de scène** : les mêmes spots, placés comme dans la salle (lointain en haut, public en bas, jardin à gauche,
+  cour à droite). « Disposer les spots » : touche un spot puis sa case (ou flèches) ; la grille se règle en colonnes et rangs.
+- **Ambiances** : « en scène » dit ce qui est allumé ; **GO** lance l'ambiance suivante (barre d'espace) ;
+  « + Enregistrer l'ambiance actuelle » garde la lumière telle quelle. **Lumière générale** et **Blackout** sont toujours en haut.
+- Raccourcis : Espace = GO, 1 à 9 = ambiance, B = blackout, Échap = tout décocher (désactivables dans Réglages > Clavier).
 
-## Mémoires (scènes)
+### Les blancs et le lime
 
-- Régler les projecteurs, puis **+ Mémoriser l'état actuel** et donner un nom.
-- Clic sur une mémoire (ou touches **1** à **9**) pour la rappeler, avec le **fondu** choisi (0 s = cut, jusqu'à 10 s).
-- **⋯** sur une mémoire : renommer, écraser avec l'état actuel, supprimer.
-- La mémoire rappelée est encadrée ; toucher un réglage la désélectionne (et interrompt un fondu en cours).
-- Master et Blackout restent indépendants des mémoires. Les mémoires sont gardées dans `state.json`.
+Les blancs sont calculés à partir de la couleur de chaque LED (rouge, vert, bleu, lime) dans l'espace colorimétrique
+CIE : pour une température donnée, Damogran cherche le mélange qui tombe sur ce blanc avec le plus de lumière possible,
+en utilisant le lime. Les caractéristiques des LED sont des valeurs typiques, pas des mesures des ColorSource :
+si un blanc tire vers le rose ou le vert, la correction « plus vert / plus rose » sert à l'ajuster à l'œil.
+Les aperçus à l'écran utilisent le même modèle, à partir des valeurs réellement envoyées aux LED.
+
+## Ambiances (mémoires)
+
+- Régler les spots, puis **+ Enregistrer l'ambiance actuelle** et donner un nom.
+- Toucher une ambiance (ou touches **1** à **9**) pour la rappeler, avec la **transition** choisie (instantanée, 2, 5 ou 10 s).
+  **GO** enchaîne sur la suivante.
+- **⋯** sur une ambiance : renommer, remplacer par la lumière actuelle, supprimer.
+- Toucher un réglage après un rappel marque l'ambiance « modifiée à la main » (et interrompt une transition en cours).
+- Lumière générale et Blackout restent indépendants des ambiances. Les ambiances sont gardées dans `state.json`.
 
 ## Effets
 
