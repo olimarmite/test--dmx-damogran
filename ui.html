@@ -7,15 +7,15 @@
 <title>Damogran</title>
 <style>
   /* Regie dans le noir : interface monochrome chaude pour que seules les couleurs des projecteurs
-     soient en couleur. Ambre (la servante du theatre) pour ce qui est coche, rouge reserve au blackout.
-     Sombre volontairement : un ecran clair en regie se voit depuis la salle. */
+     soient en couleur. Sombre volontairement : un ecran clair en regie se voit depuis la salle.
+     Une couleur = un role : ambre = coche (et focus), clair sur sombre = GO, rouge = blackout.
+     Les blocs se distinguent par leur fond, pas par des bordures. */
   :root {
-    --ground: #0f0e0c;
-    --floor: #141310;
-    --surface: #1a1815;
-    --surface-2: #24211c;
-    --line: #322d26;
-    --line-2: #4a4338;
+    --ground: #0f0e0c;     /* fond de page */
+    --band: #161411;       /* bande regie, pleine largeur */
+    --surface: #1c1a16;    /* cartes et panneau */
+    --raised: #27231e;     /* controles */
+    --line: #3a342c;
     --ink: #ede7dc;
     --ink-2: #b0a696;
     --ink-3: #8f8577;
@@ -27,253 +27,295 @@
     --legend: "Bahnschrift", "DIN Alternate", "DIN Condensed", "Barlow Semi Condensed", "Arial Narrow", sans-serif;
     --text: system-ui, "Segoe UI", -apple-system, "Helvetica Neue", sans-serif;
 
+    /* echelle de texte (rapport ~1.2, interface dense) : on n'utilise que ces tailles */
+    --t-xs: 12px; --t-sm: 14px; --t-md: 16px; --t-lg: 20px; --t-xl: 24px; --t-2xl: 32px;
+    /* espacements */
+    --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 24px; --s-6: 32px;
+
     --r-ctl: 4px;
-    --r-panel: 10px;
+    --r-card: 10px;
     --ease: cubic-bezier(.2, .7, .2, 1);
     --fast: 120ms;
     color-scheme: dark;
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; background: var(--ground); color: var(--ink); font: 15px/1.4 var(--text); }
+  html, body { margin: 0; background: var(--ground); color: var(--ink); font: var(--t-md)/1.45 var(--text); }
   body { min-height: 100vh; }
   button, input, select { font: inherit; color: inherit; }
   :focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
   .skip { position: absolute; left: 8px; top: -40px; background: var(--amber); color: var(--amber-ink); padding: 6px 10px; border-radius: var(--r-ctl); z-index: 30; }
   .skip:focus { top: 8px; }
-  .legend { font-family: var(--legend); letter-spacing: .08em; text-transform: uppercase; font-size: 13px; color: var(--ink-2); }
   .num { font-family: var(--legend); font-variant-numeric: tabular-nums; }
   .muted { color: var(--ink-2); }
-  .hint { font-size: 13px; color: var(--ink-2); }
+  .hint { font-size: var(--t-sm); color: var(--ink-2); }
   .spacer { flex: 1; }
   [hidden] { display: none !important; }
+  /* titres de section : les seuls en majuscules */
+  .eyebrow { margin: 0; font: 600 var(--t-xs)/1.2 var(--legend); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); }
+  /* libelle de champ : phrase normale */
+  .label { font-size: var(--t-sm); color: var(--ink-2); }
 
-  /* ---- boutons : touches de console ---- */
-  .btn { min-height: 44px; background: var(--surface-2); border: 1px solid var(--line-2); border-radius: var(--r-ctl); padding: 0 14px; cursor: pointer;
-    font-family: var(--legend); letter-spacing: .03em; font-size: 15px; color: var(--ink); transition: border-color var(--fast) var(--ease), background var(--fast) var(--ease); }
-  .btn:hover { border-color: #6d655a; }
-  .btn:active { background: #2d2923; }
-  .btn.primary, .btn[aria-pressed="true"] { background: var(--amber); color: var(--amber-ink); border-color: var(--amber); }
-  .btn.quiet { background: transparent; }
-  .btn.dashed { background: transparent; border-style: dashed; }
-  .btn.dashed[aria-pressed="true"] { background: var(--amber); border-style: solid; }
+  h2, .legend { margin: 0; font: 600 var(--t-xs)/1.2 var(--legend); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); }
+  .head, .row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); }
+  .panel { background: var(--surface); border-radius: var(--r-card); padding: var(--s-4) var(--s-5); min-width: 0; }
+
+  /* ---- boutons ---- */
+  .btn { min-height: 44px; background: var(--raised); border: 1px solid transparent; border-radius: var(--r-ctl); padding: 0 var(--s-4); cursor: pointer;
+    font-family: var(--legend); letter-spacing: .02em; font-size: var(--t-md); color: var(--ink); transition: background var(--fast) var(--ease), border-color var(--fast) var(--ease); }
+  .btn:hover { border-color: var(--line); }
+  .btn:active { background: #302b24; }
+  .btn.primary { background: var(--ink); color: var(--ground); }
+  .btn.text { background: transparent; color: var(--ink-2); padding: 0 var(--s-2); }
+  .btn.text:hover { color: var(--ink); border-color: transparent; }
+  .btn.dashed { background: transparent; border: 1px dashed var(--line); }
+  .btn.dashed[aria-pressed="true"] { background: var(--amber); color: var(--amber-ink); border: 1px solid var(--amber); }
   .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .opts .btn[aria-pressed="true"] { background: var(--amber); color: var(--amber-ink); }
   a.btn { display: inline-flex; align-items: center; text-decoration: none; }
-  .seg { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 2px; background: var(--ground); border: 1px solid var(--line-2); border-radius: 6px; padding: 3px; }
-  .seg button { min-height: 40px; border: 0; border-radius: 4px; background: transparent; color: var(--ink-2); cursor: pointer; font-family: var(--legend); font-size: 15px; letter-spacing: .03em; padding: 0 10px; }
-  .seg button[aria-selected="true"] { background: #2d2923; color: var(--ink); }
+  /* choix exclusif (transition, effet, type de lumiere) : etat choisi en relief, pas en ambre */
+  .seg { display: inline-grid; grid-auto-flow: column; gap: 2px; background: var(--ground); border-radius: 6px; padding: 3px; }
+  .seg button { min-height: 38px; border: 0; border-radius: 4px; background: transparent; color: var(--ink-2); cursor: pointer; font-family: var(--legend); font-size: var(--t-sm); letter-spacing: .02em; padding: 0 var(--s-3); white-space: nowrap; }
+  .seg button[aria-pressed="true"], .seg button[aria-selected="true"] { background: var(--raised); color: var(--ink); box-shadow: inset 0 -2px 0 var(--ink-2); }
+  .seg button:disabled { opacity: .45; cursor: not-allowed; }
   input[type=range] { width: 100%; accent-color: var(--amber); height: 32px; margin: 0; }
 
-  /* ---- en-tete ---- */
-  header { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--ground); border-bottom: 1px solid var(--line);
-    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px;
-    padding: 10px max(16px, env(safe-area-inset-right, 0px)) 10px max(16px, env(safe-area-inset-left, 0px)); }
-  h1 { margin: 0; font: 600 18px/1 var(--legend); letter-spacing: .18em; text-transform: uppercase; }
-  nav.views { display: flex; gap: 2px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 3px; }
-  nav.views a { min-height: 38px; display: inline-flex; align-items: center; padding: 0 14px; border-radius: 4px; color: var(--ink-2); text-decoration: none; font-family: var(--legend); font-size: 15px; letter-spacing: .03em; }
-  nav.views a[aria-current="page"] { background: #2d2923; color: var(--ink); }
-  .status { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--ink-2); }
-  .chip { display: inline-flex; align-items: center; gap: 6px; color: inherit; font-size: 13px; text-decoration: none; }
+  /* ---- en-tete : identite et navigation seulement ---- */
+  header { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-5);
+    padding: var(--s-2) max(16px, env(safe-area-inset-right, 0px)) var(--s-2) max(16px, env(safe-area-inset-left, 0px)); }
+  h1 { margin: 0; font: 600 var(--t-md)/1 var(--legend); letter-spacing: .2em; text-transform: uppercase; color: var(--ink-2); }
+  nav.views { display: flex; gap: 2px; }
+  nav.views a { min-height: 44px; display: inline-flex; align-items: center; padding: 0 var(--s-3); color: var(--ink-2); text-decoration: none; font-family: var(--legend); font-size: var(--t-md); border-bottom: 2px solid transparent; }
+  nav.views a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--ink); }
+  .status { display: flex; flex-wrap: wrap; gap: var(--s-1) var(--s-4); font-size: var(--t-xs); color: var(--ink-3); }
+  .chip { display: inline-flex; align-items: center; gap: 6px; color: inherit; text-decoration: none; }
   .dot { width: 8px; height: 8px; border-radius: 50%; background: #5a5248; flex: none; }
   .dot.ok { background: var(--ok); } .dot.err { background: var(--red); } .dot.warn { background: var(--amber); }
-  .gm { display: flex; align-items: center; gap: 10px; min-width: 220px; }
-  .gm input { width: 140px; }
-  .gm .num { width: 52px; text-align: right; font-size: 17px; white-space: nowrap; }
-  .blackout { min-height: 44px; padding: 0 18px; border-radius: var(--r-ctl); cursor: pointer; border: 2px solid var(--red); background: transparent; color: #ff8a7f;
-    font: 600 15px/1 var(--legend); letter-spacing: .14em; text-transform: uppercase; }
+
+  /* ---- bande regie : tout ce qui sert pendant le spectacle ---- */
+  .band { background: var(--band); position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; box-shadow: 0 1px 0 var(--line); }
+  .band-in { max-width: 1440px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--s-3) var(--s-6); align-items: center;
+    padding: var(--s-3) max(16px, env(safe-area-inset-right, 0px)) var(--s-3) max(16px, env(safe-area-inset-left, 0px)); }
+  .show { display: flex; align-items: stretch; gap: var(--s-3); min-width: 0; }
+  .go { flex: none; width: 200px; min-height: 76px; display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: var(--s-2) var(--s-4);
+    border-radius: 8px; cursor: pointer; background: var(--ink); color: var(--ground); border: 0; text-align: left; }
+  .go b { font: 600 var(--t-xl)/1 var(--legend); letter-spacing: .08em; }
+  .go span { font-size: var(--t-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+  .go:disabled { opacity: .45; cursor: not-allowed; }
+  .now { display: flex; flex-direction: column; justify-content: center; gap: 2px; min-width: 0; flex: none; max-width: 220px; }
+  .now .name { font: 600 var(--t-lg)/1.15 var(--legend); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .now .flags { display: flex; flex-wrap: wrap; gap: var(--s-1) var(--s-2); font-size: var(--t-xs); color: var(--ink-2); }
+  .now .flags .fx { color: var(--ink); }
+  .cues { display: flex; gap: var(--s-2); align-items: stretch; overflow-x: auto; min-width: 0; flex: 1; padding: 2px; }
+  .tile { flex: none; width: 150px; display: flex; border-radius: 8px; background: var(--surface); overflow: hidden; }
+  .tile.on { box-shadow: inset 0 0 0 2px var(--ink); }
+  .tile .pick { flex: 1; min-width: 0; min-height: 72px; display: flex; flex-direction: column; justify-content: center; gap: 6px; padding: var(--s-2) var(--s-3); background: none; border: 0; cursor: pointer; text-align: left; color: inherit; }
+  .tile .top { display: flex; align-items: center; gap: 6px; width: 100%; font-size: var(--t-xs); color: var(--ink-3); }
+  .tile .live { color: var(--ink); display: inline-flex; align-items: center; gap: 4px; }
+  .tile .live::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--ink); }
+  .tile .nm { font-size: var(--t-sm); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tile .mini { display: flex; gap: 3px; }
+  .tile .mini i { width: 10px; height: 10px; border-radius: 50%; }
+  .tile .edit { background: none; border: 0; width: 36px; color: var(--ink-3); cursor: pointer; font-size: var(--t-lg); }
+  .tile .edit:hover { color: var(--ink); }
+  .tile.add { background: transparent; box-shadow: inset 0 0 0 1px var(--line); }
+  .tile.add button { width: 100%; min-height: 72px; background: none; border: 0; color: var(--ink-2); cursor: pointer; font-size: var(--t-sm); padding: var(--s-2); }
+  .tile.add button:hover { color: var(--ink); }
+  .safety { display: flex; align-items: center; gap: var(--s-4); }
+  .gm { display: grid; grid-template-columns: auto 64px; grid-template-rows: auto auto; column-gap: var(--s-2); width: 230px; }
+  .gm .label { grid-column: 1 / -1; }
+  .gm .num { white-space: nowrap; font-size: var(--t-lg); text-align: right; align-self: center; }
+  .blackout { min-height: 56px; min-width: 132px; padding: 0 var(--s-4); border-radius: 8px; cursor: pointer; border: 2px solid var(--red); background: transparent; color: #ff8a7f;
+    font: 600 var(--t-md)/1 var(--legend); letter-spacing: .14em; text-transform: uppercase; }
   .blackout[aria-pressed="true"] { background: var(--red); color: #fff; }
+  .band-sub { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-5); font-size: var(--t-sm); }
+  .band-sub .grp { display: flex; align-items: center; gap: var(--s-2); }
+  .band-sub input[type=range] { width: 120px; }
 
-  main { padding: 16px max(16px, env(safe-area-inset-right, 0px)) 40px max(16px, env(safe-area-inset-left, 0px)); max-width: 1440px; margin: 0 auto; }
-  h2 { margin: 0; font: 600 14px/1.2 var(--legend); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-2); }
-  .head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
-  .row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
-  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-panel); padding: 16px 18px; min-width: 0; }
-  .work { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
-  .content { flex: 999 1 620px; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
-  .side { flex: 1 1 340px; min-width: 0; display: flex; flex-direction: column; gap: 16px; position: sticky; top: 76px; }
+  /* ---- zone de travail : spots (large) + reglage (etroit) ---- */
+  main { padding: var(--s-5) max(16px, env(safe-area-inset-right, 0px)) var(--s-6) max(16px, env(safe-area-inset-left, 0px)); max-width: 1440px; margin: 0 auto; }
+  .work { display: grid; grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr); gap: var(--s-6); align-items: start; }
+  .content { min-width: 0; display: flex; flex-direction: column; gap: var(--s-4); }
+  .side { min-width: 0; position: sticky; top: 132px; }
+  .sechead { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s-2) var(--s-4); }
+  .sechead h2 { margin: 0; font: 600 var(--t-xl)/1.1 var(--legend); letter-spacing: .01em; }
+  .count { font-size: var(--t-md); color: var(--ink-2); }
+  .count.has { color: var(--amber); }
 
-  /* ---- ambiances ---- */
-  .live-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; }
-  .live-name { font: 600 22px/1.1 var(--legend); }
-  .badge { font-size: 13px; padding: 2px 8px; border-radius: 3px; border: 1px solid var(--amber); color: var(--amber); }
-  .badge.solid { background: var(--amber); color: var(--amber-ink); }
-  .cues { display: flex; gap: 10px; align-items: stretch; overflow-x: auto; padding-bottom: 4px; }
-  .go { flex: none; min-width: 190px; min-height: 92px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 4px; padding: 10px 18px;
-    border-radius: 10px; cursor: pointer; background: var(--amber); color: var(--amber-ink); border: 1px solid var(--amber); text-align: left; }
-  .go b { font: 600 30px/1 var(--legend); letter-spacing: .06em; }
-  .go span { font-size: 14px; max-width: 220px; }
-  .go small { font-size: 12px; opacity: .8; }
-  .go:disabled { opacity: .5; cursor: not-allowed; }
-  .tile { flex: none; width: 168px; display: flex; border-radius: 10px; background: var(--surface); border: 1px solid var(--line-2); overflow: hidden; }
-  .tile.on { background: var(--surface-2); border: 2px solid var(--amber); }
-  .tile .pick { flex: 1; min-width: 0; min-height: 92px; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 10px 12px; background: none; border: 0; cursor: pointer; text-align: left; color: inherit; }
-  .tile .top { display: flex; align-items: center; gap: 6px; width: 100%; }
-  .tile .key { font: 14px/1 var(--legend); color: var(--ink-3); }
-  .tile.on .key { color: var(--amber); }
-  .tile .tag { white-space: nowrap; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; padding: 2px 6px; border-radius: 3px; }
-  .tile .tag.live { background: var(--amber); color: var(--amber-ink); }
-  .tile .tag.next { border: 1px solid var(--ink-2); color: var(--ink-2); }
-  .tile .name { font-size: 16px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
-  .tile .mini { display: flex; gap: 3px; flex-wrap: wrap; }
-  .tile .mini i { width: 11px; height: 11px; border-radius: 50%; box-shadow: 0 0 0 1px rgba(237,231,220,.25); }
-  .tile .edit { background: none; border: 0; border-left: 1px solid var(--line); width: 40px; color: var(--ink-2); cursor: pointer; font-size: 20px; }
-  .tile.add { align-items: center; justify-content: center; border-style: dashed; background: transparent; }
-  .tile.add button { width: 100%; height: 100%; min-height: 92px; background: none; border: 0; color: var(--ink); cursor: pointer; font-family: var(--legend); font-size: 15px; padding: 8px; }
-  .empty { color: var(--ink-2); margin: 0; max-width: 62ch; }
-
-  /* ---- barre de selection ---- */
-  .selbar { position: sticky; top: 66px; z-index: 15; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 14px;
-    background: var(--ground); border: 1px solid var(--line-2); border-radius: 8px; box-shadow: 0 6px 18px #000a; }
-  .selbar.has { border-color: var(--amber); }
-  .selbar .count { font: 600 17px/1.2 var(--legend); }
-  .selbar.has .count { color: var(--amber); }
-
-  /* ---- cartes des spots : une tranche de console par spot ---- */
-  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 12px; }
-  .card { background: var(--surface); border: 2px solid var(--line); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
-  .card.sel { border-color: var(--amber); box-shadow: 0 0 0 3px rgba(242,179,61,.18); }
-  .card .toggle { display: flex; flex-direction: column; gap: 0; padding: 0; border: 0; background: none; color: inherit; cursor: pointer; text-align: left; }
-  .card .bar { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--surface-2); }
-  .card.sel .bar { background: var(--amber); color: var(--amber-ink); }
-  .box { width: 22px; height: 22px; border-radius: 5px; border: 2px solid var(--ink-2); flex: none; display: flex; align-items: center; justify-content: center; }
-  .box svg { width: 14px; height: 14px; visibility: hidden; }
-  .card.sel .box { background: var(--amber-ink); border-color: var(--amber-ink); }
-  .card.sel .box svg { visibility: visible; color: var(--amber); }
-  .card .nm { font: 600 16px/1.1 var(--legend); letter-spacing: .02em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
-  .card .st { font-size: 12px; white-space: nowrap; }
-  .swatch { height: 76px; position: relative; display: flex; align-items: flex-end; padding: 8px; }
-  .swatch.off { background: repeating-linear-gradient(135deg, #171512 0 8px, #1d1b18 8px 16px) !important; }
-  .swatch .cap { font-size: 13px; padding: 3px 8px; border-radius: 4px; background: rgba(15,14,12,.82); color: var(--ink); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .card .minis { display: flex; justify-content: space-between; gap: 2px; padding: 10px 8px 4px; }
-  .card .foot { display: flex; padding: 0 8px 8px; }
-  .card .foot button { flex: 1; min-height: 36px; font-size: 13px; }
+  /* ---- cartes : la couleur d'abord ---- */
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); gap: var(--s-3); }
+  .card { background: var(--surface); border-radius: var(--r-card); overflow: hidden; display: flex; flex-direction: column; min-width: 0; box-shadow: inset 0 0 0 2px transparent; }
+  .card.sel { box-shadow: inset 0 0 0 3px var(--amber); }
+  .card .toggle { display: flex; flex-direction: column; padding: 0; border: 0; background: none; color: inherit; cursor: pointer; text-align: left; }
+  .swatch { height: 88px; position: relative; margin: 3px 3px 0; border-radius: 8px 8px 4px 4px; }
+  .swatch.off { background: repeating-linear-gradient(135deg, #191714 0 8px, #201d19 8px 16px) !important; }
+  .box { position: absolute; top: 8px; left: 8px; width: 26px; height: 26px; border-radius: 6px; background: rgba(15,14,12,.72); border: 2px solid var(--ink-2); display: flex; align-items: center; justify-content: center; }
+  .box svg { width: 15px; height: 15px; visibility: hidden; }
+  .card.sel .box { background: var(--amber); border-color: var(--amber); }
+  .card.sel .box svg { visibility: visible; color: var(--amber-ink); }
+  .card .who { display: flex; flex-direction: column; gap: 2px; padding: var(--s-2) var(--s-3) 0; }
+  .card .nm { font: 600 var(--t-md)/1.2 var(--legend); letter-spacing: .02em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .card.sel .nm { color: var(--amber); }
+  .card .st { font-size: var(--t-sm); color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .card .minis { display: flex; align-items: flex-end; gap: 2px; padding: var(--s-3) var(--s-2) var(--s-3); }
+  .card .minis .chans { display: flex; justify-content: space-around; flex: 1; gap: 2px; }
 
   /* ---- faders verticaux ---- */
   .fader { display: grid; justify-items: center; gap: 5px; flex: none; width: 58px; outline: none; }
-  .fader .track { position: relative; width: 36px; height: 190px; border-radius: 4px; background: var(--ground); border: 1px solid var(--line-2); cursor: ns-resize; touch-action: none; }
-  .fader .fill { position: absolute; left: 3px; right: 3px; bottom: 3px; border-radius: 2px; background: var(--fill, #6d655a); opacity: .6; }
+  .fader .track { position: relative; width: 36px; height: 180px; border-radius: 4px; background: var(--ground); cursor: ns-resize; touch-action: none; }
+  .fader .fill { position: absolute; left: 3px; right: 3px; bottom: 3px; border-radius: 2px; background: var(--fill, #6d655a); opacity: .65; }
   .fader .cap { position: absolute; left: -6px; right: -6px; height: 16px; margin-bottom: -8px; border-radius: 3px; background: #d9d2c5; border: 1px solid #000; box-shadow: inset 0 -2px 0 #9e968a; }
   .fader:focus-visible .track { outline: 2px solid var(--amber); outline-offset: 3px; }
-  .fader .val { font: 15px/1 var(--legend); font-variant-numeric: tabular-nums; }
-  .fader .lab { display: flex; align-items: center; gap: 4px; font: 12px/1.2 var(--legend); letter-spacing: .05em; text-transform: uppercase; color: var(--ink); }
+  .fader .val { font: var(--t-sm)/1 var(--legend); font-variant-numeric: tabular-nums; }
+  .fader .lab { display: flex; align-items: center; gap: 4px; font: var(--t-xs)/1.2 var(--legend); color: var(--ink-2); }
   .fader .lab i { width: 8px; height: 8px; border-radius: 50%; background: var(--fill); flex: none; }
-  .fader.mini { width: 30px; }
-  .fader.mini .track { width: 20px; height: 112px; }
-  .fader.mini .cap { left: -4px; right: -4px; height: 12px; margin-bottom: -6px; }
-  .fader.mini .val { font-size: 12px; color: var(--ink-2); }
-  .fader.mini .lab { font-size: 11px; letter-spacing: 0; }
-  .faders { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+  .fader.mini { width: 26px; }
+  .fader.mini .track { width: 16px; height: 96px; }
+  .fader.mini .cap { left: -4px; right: -4px; height: 10px; margin-bottom: -5px; }
+  .fader.mini .val { visibility: hidden; font-size: var(--t-xs); }            /* les chiffres des canaux : seulement en reglant */
+  .fader.mini:focus-within .val, .fader.mini:focus .val, .fader.mini[data-drag] .val { visibility: visible; }
+  .fader.lum { width: 44px; }
+  .fader.lum .track { width: 28px; height: 96px; }
+  .fader.lum .val { visibility: visible; color: var(--ink); }
+  .fader.lum .lab { color: var(--ink); }
+  .faders { display: flex; flex-wrap: wrap; gap: var(--s-3); align-items: flex-end; }
 
-  /* ---- panneau « pour les spots coches » ---- */
-  .tools { display: flex; flex-direction: column; gap: 18px; }
-  .tools.off .body { opacity: .4; pointer-events: none; }
-  .tools .why { padding: 10px 12px; border: 1px dashed var(--line-2); border-radius: 6px; color: var(--ink); font-size: 14px; }
-  .tools .body { display: flex; flex-direction: column; gap: 18px; }
-  .sws { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px 6px; }
-  .sw { display: flex; flex-direction: column; align-items: center; gap: 4px; background: none; border: 0; padding: 0; cursor: pointer; color: var(--ink-2); font-size: 11px; }
-  .sw i { width: 44px; height: 44px; border-radius: 50%; border: 2px solid rgba(237,231,220,.3); display: block; }
-  .sw:hover i { border-color: var(--ink); }
-  .temp { position: relative; height: 48px; border-radius: 8px; cursor: ew-resize; touch-action: none; border: 1px solid var(--line-2); }
-  .temp .mark { position: absolute; top: -5px; bottom: -5px; width: 6px; margin-left: -3px; border-radius: 3px; background: var(--ink); box-shadow: 0 0 0 1px #000; pointer-events: none; }
-  .scale { display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-3); }
-  .quick { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
-  .quick button { min-height: 44px; border-radius: 4px; border: 2px solid transparent; cursor: pointer; color: var(--amber-ink); font: 600 14px/1.1 var(--legend); }
-  details.more { border-top: 1px solid var(--line); padding-top: 12px; }
-  details.more summary { cursor: pointer; font: 13px/1 var(--legend); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); min-height: 32px; display: flex; align-items: center; }
-  details.more .faders { margin-top: 12px; }
+  /* ---- panneau de reglage des spots coches ---- */
+  .tools { background: var(--surface); border-radius: var(--r-card); padding: var(--s-5); display: flex; flex-direction: column; gap: var(--s-5); }
+  .tools .title { font: 600 var(--t-xl)/1.15 var(--legend); }
+  .tools .names { font-size: var(--t-sm); color: var(--ink-2); }
+  .tools.off .body { display: none; }
+  .tools .why { margin: 0; color: var(--ink-2); line-height: 1.5; }
+  .tools .body { display: flex; flex-direction: column; gap: var(--s-5); }
+  .group { display: flex; flex-direction: column; gap: var(--s-2); }
+  .row2 { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s-2); }
+  .sws { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--s-3) var(--s-1); }
+  .sw { display: flex; flex-direction: column; align-items: center; gap: 4px; background: none; border: 0; padding: 0; cursor: pointer; color: var(--ink-2); font-size: var(--t-xs); }
+  .sw i { width: 44px; height: 44px; border-radius: 50%; display: block; box-shadow: inset 0 0 0 2px rgba(237,231,220,.18); }
+  .sw:hover i { box-shadow: inset 0 0 0 2px var(--ink); }
+  .quick { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-2); }
+  .quick button { min-height: 52px; border-radius: 6px; border: 0; cursor: pointer; color: var(--amber-ink); font: 600 var(--t-md)/1.1 var(--legend); }
+  .quick button small { font: var(--t-xs)/1 var(--text); opacity: .75; }
+  .temp { position: relative; height: 40px; border-radius: 6px; cursor: ew-resize; touch-action: none; }
+  .temp .mark { position: absolute; top: -4px; bottom: -4px; width: 6px; margin-left: -3px; border-radius: 3px; background: var(--ground); box-shadow: 0 0 0 2px var(--ink); pointer-events: none; }
+  .scale { display: flex; justify-content: space-between; font-size: var(--t-xs); color: var(--ink-3); }
+  .lvls { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-2); }
+  details.more { border-top: 1px solid var(--line); padding-top: var(--s-3); }
+  details.more + details.more { border-top: 0; padding-top: 0; }
+  details.more summary { cursor: pointer; font-size: var(--t-sm); color: var(--ink-2); min-height: 40px; display: flex; align-items: center; }
+  details.more summary:hover { color: var(--ink); }
+  details.more[open] summary { color: var(--ink); }
+  details.more .inner { display: flex; flex-direction: column; gap: var(--s-2); padding: var(--s-2) 0 var(--s-3); }
+  details.more .faders { margin-top: var(--s-2); }
 
   /* ---- plan ---- */
   .plan-wrap { overflow-x: auto; }
-  .plan { min-width: 560px; background: var(--floor); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 6px; }
-  .plan .edge { font: 12px/1 var(--legend); letter-spacing: .2em; color: var(--ink-3); }
-  .plan .mid { display: flex; gap: 8px; align-items: stretch; }
+  .plan { min-width: 560px; background: var(--surface); border-radius: var(--r-card); padding: var(--s-3); display: flex; flex-direction: column; gap: 6px; }
+  .plan .edge { font: var(--t-xs)/1 var(--legend); letter-spacing: .16em; color: var(--ink-3); }
+  .plan .mid { display: flex; gap: var(--s-2); align-items: stretch; }
   .plan .vert { writing-mode: vertical-rl; text-align: center; }
-  .grid { flex: 1; min-width: 0; position: relative; height: 32rem; border: 1px solid var(--line); background-color: #171512;
-    background-image: linear-gradient(to right, #2c2822 1px, transparent 1px), linear-gradient(to bottom, #2c2822 1px, transparent 1px); }
+  .grid { flex: 1; min-width: 0; position: relative; height: 32rem; background-color: #141210;
+    background-image: linear-gradient(to right, #2a2620 1px, transparent 1px), linear-gradient(to bottom, #2a2620 1px, transparent 1px); }
   .cells { position: absolute; inset: 0; display: grid; }
   .cells button { background: transparent; border: 1px dashed #5a5248; margin: 3px; border-radius: 4px; cursor: crosshair; }
   .cells button:hover { border-color: var(--amber); }
   .spot { position: absolute; transform: translate(-50%, -50%); z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; background: none; border: 0; padding: 4px; cursor: pointer; color: inherit; }
-  .spot .disc { width: 52px; height: 52px; border-radius: 50%; border: 2px solid var(--line-2); display: flex; align-items: center; justify-content: center; position: relative; }
-  .spot .disc.off { background: repeating-linear-gradient(135deg, #171512 0 6px, #24211c 6px 12px) !important; }
-  .spot .n { min-width: 22px; height: 22px; padding: 0 5px; border-radius: 11px; background: rgba(15,14,12,.82); display: flex; align-items: center; justify-content: center; font: 600 13px/1 var(--legend); color: var(--ink); }
+  .spot .disc { width: 52px; height: 52px; border-radius: 50%; box-shadow: inset 0 0 0 2px var(--line); display: flex; align-items: center; justify-content: center; position: relative; }
+  .spot .disc.off { background: repeating-linear-gradient(135deg, #191714 0 6px, #24211c 6px 12px) !important; }
+  .spot .n { min-width: 22px; height: 22px; padding: 0 5px; border-radius: 11px; background: rgba(15,14,12,.82); display: flex; align-items: center; justify-content: center; font: 600 var(--t-xs)/1 var(--legend); color: var(--ink); }
   .spot .ck { position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 50%; background: var(--amber); color: var(--amber-ink); display: none; align-items: center; justify-content: center; }
   .spot .ck svg { width: 13px; height: 13px; }
-  .spot[aria-pressed="true"] .disc { border: 3px solid var(--amber); box-shadow: 0 0 0 3px rgba(242,179,61,.25); }
+  .spot[aria-pressed="true"] .disc { box-shadow: 0 0 0 3px var(--amber); }
   .spot[aria-pressed="true"] .ck { display: flex; }
-  .spot .lb { font-size: 12px; color: var(--ink-2); white-space: nowrap; }
+  .spot .lb { font-size: var(--t-xs); color: var(--ink-2); white-space: nowrap; }
   .spot[aria-pressed="true"] .lb { color: var(--amber); }
-  .spot.moving .disc { border: 3px dashed var(--amber); }
-  .arrange { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; padding: 10px 14px; border: 1px solid var(--amber); border-radius: 6px; }
+  .spot.moving .disc { box-shadow: 0 0 0 3px var(--amber); outline: 2px dashed var(--amber); outline-offset: 5px; }
+  .arrange { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3) var(--s-5); padding: var(--s-3) var(--s-4); background: var(--surface); border-radius: 8px; box-shadow: inset 3px 0 0 var(--amber); }
   .stepper { display: flex; align-items: center; gap: 6px; }
-  .stepper button { width: 44px; height: 40px; border-radius: 4px; cursor: pointer; background: var(--surface-2); color: var(--ink); border: 1px solid var(--line-2); font-size: 18px; }
+  .stepper button { width: 44px; height: 40px; border-radius: 4px; cursor: pointer; background: var(--raised); color: var(--ink); border: 0; font-size: var(--t-lg); }
   .stepper button:disabled { opacity: .4; cursor: not-allowed; }
-  .stepper output { min-width: 28px; text-align: center; font: 18px/1 var(--legend); }
+  .stepper output { min-width: 28px; text-align: center; font: var(--t-lg)/1 var(--legend); }
 
   /* ---- reglages ---- */
-  .settings { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
-  .subnav { flex: 1 1 200px; display: flex; flex-direction: column; gap: 4px; }
-  .subnav button { min-height: 44px; text-align: left; padding: 0 14px; border-radius: 6px; background: transparent; border: 1px solid transparent; color: var(--ink-2); cursor: pointer; font-size: 15px; }
-  .subnav button[aria-current="true"] { background: var(--surface); border-color: var(--line); color: var(--ink); }
-  .pane { flex: 999 1 640px; min-width: 0; display: flex; flex-direction: column; gap: 20px; }
-  .pane h3 { margin: 0; font: 600 26px/1.1 var(--legend); letter-spacing: .02em; }
-  .help { font-size: 13px; color: var(--ink-2); margin: 0; max-width: 75ch; line-height: 1.5; }
-  .help code, .steps code { color: var(--ink); font-size: 12.5px; }
+  .settings { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: var(--s-6); align-items: start; }
+  .subnav { display: flex; flex-direction: column; gap: 2px; }
+  .subnav button { min-height: 44px; text-align: left; padding: 0 var(--s-3); border-radius: 6px; background: transparent; border: 0; color: var(--ink-2); cursor: pointer; font-size: var(--t-md); box-shadow: inset 2px 0 0 transparent; }
+  .subnav button[aria-current="true"] { background: var(--surface); color: var(--ink); box-shadow: inset 2px 0 0 var(--ink); }
+  .pane { min-width: 0; display: flex; flex-direction: column; gap: var(--s-5); }
+  .pane h3 { margin: 0; font: 600 var(--t-2xl)/1.1 var(--legend); letter-spacing: .01em; }
+  .card-box { background: var(--surface); border-radius: var(--r-card); padding: var(--s-4) var(--s-5); display: flex; flex-direction: column; gap: var(--s-3); }
+  .help { font-size: var(--t-sm); color: var(--ink-2); margin: 0; max-width: 75ch; line-height: 1.5; }
+  .help code, .steps code { color: var(--ink); font-size: var(--t-xs); }
   .tablewrap { overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; }
-  th { text-align: left; font: 500 12px/1.2 var(--legend); letter-spacing: .04em; color: var(--ink-2); padding: 4px 6px; }
-  td { padding: 4px 6px; border-top: 1px solid var(--line); vertical-align: middle; font-size: 14px; }
+  th { text-align: left; font: 500 var(--t-xs)/1.2 var(--legend); letter-spacing: .04em; color: var(--ink-2); padding: 4px 6px; }
+  td { padding: 4px 6px; border-top: 1px solid var(--line); vertical-align: middle; font-size: var(--t-sm); }
   td input { width: 100%; }
   td.n { width: 96px; }
-  select, input[type=text], input[type=number] { min-height: 40px; background: var(--ground); border: 1px solid var(--line-2); border-radius: var(--r-ctl); padding: 6px 8px; min-width: 0; }
-  .warn { color: var(--amber); font-size: 13px; white-space: pre-line; }
-  .err { color: #ff8a7f; font-size: 13px; }
-  .form { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
-  .form label, .lbl { display: grid; gap: 4px; font-size: 13px; color: var(--ink-2); }
-  .tag { display: inline-block; font: 11px/1.4 var(--legend); padding: 0 6px; border-radius: 3px; background: var(--surface-2); color: var(--ink-2); margin-left: 6px; }
+  select, input[type=text], input[type=number] { min-height: 40px; background: var(--ground); border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 6px 8px; min-width: 0; }
+  .warn { color: var(--amber); font-size: var(--t-sm); white-space: pre-line; }
+  .err { color: #ff8a7f; font-size: var(--t-sm); }
+  .form { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--s-3); }
+  .form label, .lbl { display: grid; gap: 4px; font-size: var(--t-sm); color: var(--ink-2); }
+  .tag { display: inline-block; font: var(--t-xs)/1.4 var(--legend); padding: 0 6px; border-radius: 3px; background: var(--raised); color: var(--ink-2); margin-left: 6px; }
   .tag.attn { color: var(--amber); }
-  .tester { display: grid; grid-template-columns: 110px 110px 1fr auto; gap: 12px; align-items: end; }
-  .sources { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
-  .source { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; text-align: left; padding: 14px 16px; border-radius: 10px; cursor: pointer; color: var(--ink); background: var(--surface); border: 1px solid var(--line-2); }
-  .source[aria-pressed="true"] { border: 2px solid var(--amber); }
-  .source b { font: 600 18px/1.1 var(--legend); }
-  .source span { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-2); }
-  .desk-wrap { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
-  .desk { flex: 999 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
-  .board { background: #1d1b18; border: 1px solid #3a342c; border-radius: 12px; padding: 16px 8px 12px; overflow-x: auto; }
+  .tester { display: grid; grid-template-columns: 110px 110px 1fr auto; gap: var(--s-3); align-items: end; }
+  .sources { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--s-3); }
+  .source { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; text-align: left; padding: var(--s-4); border-radius: var(--r-card); cursor: pointer; color: var(--ink); background: var(--surface); border: 0; box-shadow: inset 0 0 0 1px var(--line); }
+  .source[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--ink); }
+  .source b { font: 600 var(--t-lg)/1.1 var(--legend); }
+  .source span { display: flex; align-items: center; gap: 8px; font-size: var(--t-sm); color: var(--ink-2); }
+  .desk-wrap { display: flex; flex-wrap: wrap; gap: var(--s-5); align-items: flex-start; }
+  .desk { flex: 999 1 520px; min-width: 0; display: flex; flex-direction: column; gap: var(--s-3); }
+  .board { background: #1d1b18; border-radius: 12px; padding: var(--s-4) var(--s-2) var(--s-3); overflow-x: auto; }
   .strips { display: flex; gap: 3px; align-items: flex-end; min-width: min-content; }
-  .strip { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 64px; flex: none; padding: 10px 2px 12px; border-radius: 8px; cursor: pointer; color: inherit; background: transparent; border: 1px solid transparent; }
+  .strip { display: flex; flex-direction: column; align-items: center; gap: var(--s-2); width: 64px; flex: none; padding: 10px 2px 12px; border-radius: 8px; cursor: pointer; color: inherit; background: transparent; border: 1px solid transparent; }
   .strip[aria-pressed="true"] { background: #2a2620; border-color: var(--amber); }
   .strip.live .rail i { background: var(--amber); }
-  .strip .no { font: 13px/1 var(--legend); color: var(--ink-2); }
+  .strip .no { font: var(--t-sm)/1 var(--legend); color: var(--ink-2); }
   .strip[aria-pressed="true"] .no { color: var(--amber); }
-  .strip .rail { position: relative; width: 10px; height: 140px; border-radius: 5px; background: var(--ground); border: 1px solid var(--line); }
+  .strip .rail { position: relative; width: 10px; height: 140px; border-radius: 5px; background: var(--ground); }
   .strip .rail i { position: absolute; left: 1px; right: 1px; bottom: 1px; border-radius: 4px; background: #6d655a; }
   .strip .rail b { position: absolute; left: -12px; width: 34px; height: 16px; margin-bottom: -8px; border-radius: 3px; background: #d9d2c5; border: 1px solid #000; box-shadow: inset 0 -2px 0 #9e968a; }
-  .strip .v { font: 12px/1 var(--legend); color: var(--ink-2); }
-  .strip .as { max-width: 60px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; padding: 3px 6px; border-radius: 3px; background: #2d2923; color: var(--ink); }
+  .strip .v { font: var(--t-xs)/1 var(--legend); color: var(--ink-2); }
+  .strip .as { max-width: 60px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--t-xs); padding: 3px 6px; border-radius: 3px; background: #2d2923; color: var(--ink); }
   .strip[aria-pressed="true"] .as { background: var(--amber); color: var(--amber-ink); }
-  .assign { flex: 1 1 300px; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
-  .assign .grp { display: flex; flex-direction: column; gap: 8px; }
-  .assign .grp > span { font: 12px/1 var(--legend); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); }
+  .assign { flex: 1 1 300px; min-width: 0; }
+  .assign .grp { display: flex; flex-direction: column; gap: var(--s-2); }
+  .assign .grp > span { font-size: var(--t-xs); color: var(--ink-3); }
   .opts { display: flex; flex-wrap: wrap; gap: 6px; }
-  .opts .btn { min-height: 40px; font-family: var(--text); font-size: 14px; letter-spacing: 0; padding: 0 12px; }
-  .steps { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: 14px; max-width: 80ch; line-height: 1.5; }
-  .switch { display: inline-flex; align-items: center; gap: 10px; font-size: 15px; min-height: 44px; }
+  .opts .btn { min-height: 40px; font-family: var(--text); font-size: var(--t-sm); letter-spacing: 0; padding: 0 var(--s-3); }
+  .steps { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: var(--t-sm); max-width: 80ch; line-height: 1.5; }
+  .switch { display: inline-flex; align-items: center; gap: 10px; font-size: var(--t-md); min-height: 44px; }
   .switch input { width: 20px; height: 20px; accent-color: var(--amber); }
-  .big-title { font: 600 22px/1.1 var(--legend); color: var(--ink); letter-spacing: .02em; text-transform: none; }
+  .big-title { font: 600 var(--t-xl)/1.1 var(--legend); color: var(--ink); }
 
-  dialog { background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: var(--r-panel); padding: 0; width: min(440px, calc(100vw - 24px)); }
+  dialog { background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: var(--r-card); padding: 0; width: min(440px, calc(100vw - 24px)); }
   dialog::backdrop { background: #000c; }
-  .dlg { padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+  .dlg { padding: var(--s-5); display: flex; flex-direction: column; gap: var(--s-4); }
 
-  @media (max-width: 760px) {
-    .gm { min-width: 0; flex: 1 1 100%; order: 5; }
-    .gm input { flex: 1; width: auto; }
-    .status .net { display: none; }
-    header { position: static; }
+  @media (max-width: 1100px) {
+    .band-in { grid-template-columns: minmax(0, 1fr); }
+    .safety { justify-content: space-between; }
+    .gm { flex: 1; width: auto; grid-template-columns: minmax(0, 1fr) 64px; }
+    .work { grid-template-columns: minmax(0, 1fr); }
     .side { position: static; }
-    .selbar { top: 0; }
-    .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  }
+  @media (max-width: 760px) {
+    .band { position: static; }
+    .show { flex-wrap: wrap; }
+    .go { width: 100%; min-height: 64px; order: 2; }
+    .now { max-width: none; order: 1; }
+    .cues { order: 3; flex-basis: 100%; }
+    .band-sub .grp { width: 100%; }
+    .band-sub .grp > .hint { flex: none; width: 76px; }
+    .band-sub .seg { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; }
+    .band-sub .seg button { flex: 1 0 auto; }
+    .band-sub input[type=range] { flex: 1; width: auto; }
+    .status .net { display: none; }
+    .selbar-m { position: sticky; top: 0; z-index: 15; background: var(--ground); padding: var(--s-2) 0; box-shadow: 0 8px 12px -8px #000; }
+    .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-2); }
+    .settings { grid-template-columns: minmax(0, 1fr); gap: var(--s-4); }
+    .subnav { flex-direction: row; flex-wrap: wrap; }
     .tester { grid-template-columns: 1fr 1fr; }
     .tester .wide { grid-column: 1 / -1; }
   }
@@ -288,53 +330,63 @@
     <a href="#spots" data-view="spots">Spots</a>
     <a href="#plan" data-view="plan">Plan de scène</a>
   </nav>
+  <span class="spacer"></span>
   <div class="status">
     <span class="chip net" role="status"><span class="dot" id="dot"></span><span id="statusText">connexion…</span></span>
     <a class="chip" href="#reglages/console"><span class="dot" id="consoleDot"></span><span id="consoleText">Console</span></a>
   </div>
-  <span class="spacer"></span>
-  <label class="gm" title="Règle toute la lumière d'un coup, sans changer les réglages des spots">
-    <span class="legend">Lumière générale</span>
-    <input type="range" id="master" min="0" max="255">
-    <span class="num" id="masterOut">100 %</span>
-  </label>
-  <button class="blackout" id="blackout" type="button" aria-pressed="false" title="Touche B">Blackout</button>
-  <a class="btn" href="#reglages" id="settingsLink">Réglages</a>
+  <a class="btn text" href="#reglages" id="settingsLink">Réglages</a>
 </header>
+
+<!-- bande regie : ce qui sert pendant le spectacle, toujours sous la main -->
+<section class="band" id="band" aria-label="Régie">
+  <div class="band-in">
+    <div class="show">
+      <div class="now">
+        <span class="eyebrow">En scène</span>
+        <span class="name" id="liveName" role="status"></span>
+        <span class="flags"><span id="liveModified" hidden>modifiée à la main</span><span class="fx" id="liveEffect" hidden></span></span>
+      </div>
+      <button class="go" id="goBtn" type="button"><b>GO</b><span id="goLabel"></span></button>
+      <div class="cues" id="cues" aria-label="Ambiances enregistrées">
+        <div style="display:flex;gap:8px" id="sceneList"></div>
+        <div class="tile add"><button type="button" id="sceneNew">+ Enregistrer l'ambiance</button></div>
+      </div>
+    </div>
+    <div class="safety">
+      <label class="gm" title="Règle toute la lumière d'un coup, sans changer les réglages des spots">
+        <span class="label">Lumière générale</span>
+        <input type="range" id="master" min="0" max="255">
+        <span class="num" id="masterOut">100 %</span>
+      </label>
+      <button class="blackout" id="blackout" type="button" aria-pressed="false" title="Touche B">Blackout</button>
+    </div>
+    <div class="band-sub">
+      <span class="grp"><span class="hint" id="fadeLbl">Transition</span><span class="seg" role="group" aria-labelledby="fadeLbl" id="fades"></span></span>
+      <span class="grp"><span class="hint" id="fxLbl">Effet</span><span class="seg" role="group" aria-labelledby="fxLbl" id="fxButtons"></span></span>
+      <label class="grp" id="fxSpeedRow"><span class="hint">Vitesse</span><input type="range" id="fxSpeed" min="0.25" max="3" step="0.05" value="1"><span class="num" id="fxSpeedOut">1,0×</span></label>
+      <span class="spacer"></span>
+      <span class="hint" id="goKey">Espace : GO · B : blackout</span>
+    </div>
+  </div>
+</section>
 
 <main id="main" tabindex="-1">
   <div class="work" id="work">
     <div class="content">
-      <!-- ambiances : ce qui est en scene, GO, ambiances enregistrees -->
-      <section class="panel" aria-labelledby="cueTitle" style="display:flex;flex-direction:column;gap:12px">
-        <div class="head">
-          <h2 id="cueTitle">Ambiances</h2>
-          <span class="live-line"><span class="hint">en scène :</span><span class="live-name" id="liveName" role="status"></span>
-            <span class="badge" id="liveModified" hidden>modifiée à la main</span><span class="badge solid" id="liveEffect" hidden></span></span>
-          <span class="spacer"></span>
-          <span class="hint" id="fadeLbl">Transition</span>
-          <span class="row" role="group" aria-labelledby="fadeLbl" id="fades" style="gap:4px"></span>
-        </div>
-        <div class="cues" id="cues">
-          <button class="go" id="goBtn" type="button"><b>GO</b><span id="goLabel"></span><small id="goKey">barre d'espace</small></button>
-          <div style="display:flex;gap:10px" id="sceneList"></div>
-          <div class="tile add"><button type="button" id="sceneNew">+ Enregistrer l'ambiance actuelle</button></div>
-        </div>
-      </section>
-
-      <!-- barre de selection, toujours visible -->
-      <div class="selbar" id="selbar" role="region" aria-label="Spots cochés">
+      <div class="sechead selbar-m" id="selbar">
+        <h2 id="secTitle">Spots</h2>
         <span class="count" id="selCount" role="status"></span>
         <span class="spacer"></span>
-        <button class="btn" type="button" id="selAll">Tout cocher</button>
-        <button class="btn quiet" type="button" id="selNone">Tout décocher</button>
+        <button class="btn text" type="button" id="selAll">Tout cocher</button>
+        <button class="btn text" type="button" id="selNone">Tout décocher</button>
         <button class="btn primary" type="button" id="gotoTools" hidden>Régler ↓</button>
       </div>
 
-      <!-- vue spots : une carte par spot -->
-      <section id="view-spots" aria-label="Spots">
-        <p class="help" style="margin-bottom:10px">Touche un spot pour le cocher. Les petits faders d'un spot ne règlent que lui. Le panneau « Pour les spots cochés » règle tous ceux qui sont cochés.</p>
+      <!-- vue spots : une carte par spot, la couleur d'abord -->
+      <section id="view-spots" aria-labelledby="secTitle">
         <div class="cards" id="cards"></div>
+        <p class="help" style="margin-top:12px">Touche la couleur d'un spot pour le cocher. Ses petits faders ne règlent que lui ; le panneau de droite règle tous les spots cochés.</p>
       </section>
 
       <!-- vue plan : les spots places comme dans la salle -->
@@ -346,8 +398,8 @@
         </div>
         <div class="arrange" id="arrangeBar" hidden>
           <p class="help" style="flex:1 1 260px;color:var(--ink)" id="arrangeHint" role="status"></p>
-          <span class="stepper"><span class="legend">Colonnes</span><button type="button" id="colMinus" aria-label="Une colonne de moins">−</button><output id="colOut" aria-live="polite"></output><button type="button" id="colPlus" aria-label="Une colonne de plus">+</button></span>
-          <span class="stepper"><span class="legend">Rangs</span><button type="button" id="rowMinus" aria-label="Un rang de moins">−</button><output id="rowOut" aria-live="polite"></output><button type="button" id="rowPlus" aria-label="Un rang de plus">+</button></span>
+          <span class="stepper"><span class="label">Colonnes</span><button type="button" id="colMinus" aria-label="Une colonne de moins">−</button><output id="colOut" aria-live="polite"></output><button type="button" id="colPlus" aria-label="Une colonne de plus">+</button></span>
+          <span class="stepper"><span class="label">Rangs</span><button type="button" id="rowMinus" aria-label="Un rang de moins">−</button><output id="rowOut" aria-live="polite"></output><button type="button" id="rowPlus" aria-label="Un rang de plus">+</button></span>
         </div>
         <div class="plan-wrap">
           <div class="plan">
@@ -363,44 +415,47 @@
       </section>
     </div>
 
+    <!-- reglage des spots coches : par ordre d'usage -->
     <aside class="side">
-      <section class="panel tools" id="tools" aria-labelledby="toolsTitle">
+      <section class="tools" id="tools" aria-labelledby="toolsTitle">
         <div>
-          <h2 id="toolsTitle">Pour les spots cochés</h2>
-          <span class="big-title" id="toolsWho" style="display:block;margin-top:4px"></span>
+          <span class="eyebrow">Régler les spots cochés</span>
+          <div class="title" id="toolsTitle"></div>
+          <div class="names" id="toolsWho"></div>
         </div>
-        <p class="why" id="toolsWhy">Coche d'abord un ou plusieurs spots (ou « Tout cocher ») : ces réglages s'appliqueront à eux.</p>
+        <p class="why" id="toolsWhy">Coche un ou plusieurs spots à gauche (ou « Tout cocher ») : leur couleur et leur luminosité se règlent ici.</p>
         <div class="body">
-          <div style="display:flex;flex-direction:column;gap:6px">
-            <label for="selDim" class="row" style="justify-content:space-between"><span class="legend">Luminosité</span><span class="num" style="font-size:18px" id="selDimOut"></span></label>
-            <input type="range" id="selDim" min="0" max="255">
-            <div class="row" style="gap:6px"><button class="btn" type="button" id="selOff">Éteindre</button><button class="btn" type="button" id="selHalf">Moitié</button><button class="btn" type="button" id="selFull">À fond</button></div>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:8px">
-            <span class="legend" id="colLbl">Couleur</span>
+          <div class="group">
+            <span class="label" id="colLbl">Couleur</span>
             <div class="sws" role="group" aria-labelledby="colLbl" id="swatches"></div>
           </div>
-          <div style="display:flex;flex-direction:column;gap:8px">
-            <span class="row" style="justify-content:space-between"><span class="legend">Blanc</span><span class="num" style="font-size:16px" id="kOut"></span></span>
+          <div class="group">
+            <span class="row2"><span class="label">Blanc</span><span class="hint" id="kOut"></span></span>
             <div class="quick" id="quickWhites"></div>
             <div class="temp" id="temp" role="slider" tabindex="0" aria-label="Température du blanc, de chaud à froid" aria-valuemin="2700" aria-valuemax="6500"><span class="mark" id="tempMark"></span></div>
-            <span class="scale"><span>chaud · bougie</span><span>neutre</span><span>froid · ciel</span></span>
-            <label for="tint" class="row" style="justify-content:space-between;margin-top:6px"><span class="hint">Si la peau paraît trop rose ou trop verte</span><span id="tintOut" class="hint" style="color:var(--ink)"></span></label>
-            <input type="range" id="tint" min="-100" max="100" value="0">
-            <span class="scale"><span>plus vert</span><span>plus rose</span></span>
+            <span class="scale"><span>chaud · bougie</span><span>froid · ciel</span></span>
           </div>
-          <details class="more">
-            <summary>Canaux un par un (pour experts)</summary>
-            <div class="faders" id="selRaw"></div>
-          </details>
+          <div class="group">
+            <label for="selDim" class="row2"><span class="label">Luminosité</span><span class="num" style="font-size:var(--t-lg)" id="selDimOut"></span></label>
+            <input type="range" id="selDim" min="0" max="255">
+            <div class="lvls"><button class="btn" type="button" id="selOff">Éteindre</button><button class="btn" type="button" id="selHalf">Moitié</button><button class="btn" type="button" id="selFull">À fond</button></div>
+          </div>
+          <div>
+            <details class="more" id="tintBox">
+              <summary>La peau paraît trop rose ou trop verte ?</summary>
+              <div class="inner">
+                <label for="tint" class="row2"><span class="label">Correction du blanc</span><span id="tintOut" class="hint" style="color:var(--ink)"></span></label>
+                <input type="range" id="tint" min="-100" max="100" value="0">
+                <span class="scale"><span>plus vert</span><span>plus rose</span></span>
+              </div>
+            </details>
+            <details class="more">
+              <summary>Canaux un par un (pour experts)</summary>
+              <div class="faders" id="selRaw"></div>
+            </details>
+          </div>
           <button class="btn" type="button" id="identify">Faire clignoter pour les repérer</button>
         </div>
-      </section>
-
-      <section class="panel" aria-labelledby="fxTitle" style="display:flex;flex-direction:column;gap:12px">
-        <h2 id="fxTitle">Effets sur tout le plateau</h2>
-        <div class="row" id="fxButtons" style="gap:6px"></div>
-        <label class="row" style="gap:8px"><span class="hint">Vitesse</span><input type="range" id="fxSpeed" min="0.25" max="3" step="0.05" value="1" style="flex:1"><span class="num" id="fxSpeedOut">1,0×</span></label>
       </section>
     </aside>
   </div>
@@ -798,7 +853,7 @@ function renderScenes() {
   $("liveEffect").hidden = state.blackout || !state.effect;
   if (state.effect) $("liveEffect").textContent = "effet : " + (FX.find(f => f[0] === state.effect.name) || [, ""])[1];
   $("goBtn").disabled = !next;
-  $("goLabel").textContent = next ? `ambiance suivante : ${next.name}` : "enregistre d'abord une ambiance";
+  $("goLabel").textContent = next ? `suivante : ${next.name}` : "enregistre d'abord une ambiance";
   $("goKey").hidden = !pref("keys", true);
   for (const b of $("fades").children) b.setAttribute("aria-pressed", String(+b.dataset.f === +state.fade));
   const key = JSON.stringify([scenes.map(s => [s.id, s.name, s.fixtures]), live, next && next.id, config.fixtures.map(f => f.id)]);
@@ -814,9 +869,9 @@ function renderScenes() {
     }
     list.append(el("div", { class: "tile" + (isLive ? " on" : "") },
       el("button", { class: "pick", type: "button", "aria-pressed": String(isLive), "aria-label": s.name + (isLive ? ", en scène" : isNext ? ", suivante" : ""), onclick: () => recallScene(s.id) },
-        el("span", { class: "top" }, el("span", { class: "key" }, i < 9 ? String(i + 1) : ""), el("span", { class: "spacer" }),
-          isLive ? el("span", { class: "tag live" }, "en scène") : isNext ? el("span", { class: "tag next" }, "suivante") : null),
-        el("span", { class: "name" }, s.name), mini),
+        el("span", { class: "top" }, el("span", {}, i < 9 ? String(i + 1) : ""),
+          isLive ? el("span", { class: "live" }, "en scène") : isNext ? el("span", {}, "· suivante") : null),
+        el("span", { class: "nm" }, s.name), mini),
       el("button", { class: "edit", type: "button", "aria-label": "Modifier " + s.name, title: "Renommer, remplacer ou supprimer", onclick: () => openSceneDlg(s) }, "⋯")));
   });
 }
@@ -825,7 +880,7 @@ function recallScene(id) { sceneApi({ action: "recall", id, fade: state.fade });
 const go = () => { if (nextScene()) sceneApi({ action: "go", after: lastScene }); };
 $("goBtn").onclick = go;
 for (const [v, label] of FADES) {
-  const b = el("button", { class: "btn", type: "button", "data-f": v, "aria-pressed": "false" }, label);
+  const b = el("button", { type: "button", "data-f": v, "aria-pressed": "false" }, label);
   b.onclick = () => sceneApi({ action: "fade", fade: v });
   $("fades").append(b);
 }
@@ -862,7 +917,8 @@ function renderHeader() {
   const n = selected.size, names = config.fixtures.filter(f => selected.has(f.id)).map(f => f.name);
   $("selCount").textContent = n === 0 ? "Aucun spot coché" : n === config.fixtures.length ? `Tous les spots cochés (${n})`
     : `${n} spot${n > 1 ? "s" : ""} coché${n > 1 ? "s" : ""} : ${names.join(", ")}`;
-  $("selbar").classList.toggle("has", n > 0);
+  $("selCount").classList.toggle("has", n > 0);
+  $("secTitle").textContent = view === "plan" ? "Plan de scène" : "Spots";
   $("selNone").disabled = n === 0; $("selAll").disabled = n === config.fixtures.length;
   $("gotoTools").hidden = n === 0 || !narrow.matches;   // sur telephone, le panneau est sous les cartes
 }
@@ -878,15 +934,15 @@ function buildCards() {
   if (!config.fixtures.length) { box.append(el("p", { class: "empty" }, "Aucun projecteur. Va dans Réglages > Projecteurs pour les ajouter ou les chercher.")); return; }
   config.fixtures.forEach((fx, i) => {
     const faders = {};
-    faders.dim = makeFader({ label: `Luminosité de ${fx.name}`, short: "Lum", cls: "mini", fill: "#d9d2c5", onInput: v => setDim([fx.id], v) });
+    faders.dim = makeFader({ label: `Luminosité de ${fx.name}`, short: "Lum.", cls: "mini lum", fill: "#d9d2c5", onInput: v => setDim([fx.id], v) });
     for (const [k, name, color] of presentChannels([fx.id])) faders[k] = makeFader({ label: `${name} de ${fx.name}`, short: SHORT[k], cls: "mini", fill: color, onInput: v => setChannel([fx.id], k, v) });
     cardFaders[fx.id] = faders;
+    const { dim, ...chans } = faders;
     const card = el("article", { class: "card", "data-id": fx.id, "aria-label": fx.name },
       el("button", { class: "toggle", type: "button", "aria-pressed": "false", onclick: () => toggleSel(fx.id) },
-        el("span", { class: "bar" }, el("span", { class: "box", html: CHECK }), el("span", { class: "nm" }, fx.name), el("span", { class: "st" })),
-        el("span", { class: "swatch" }, el("span", { class: "cap" }))),
-      el("div", { class: "minis" }, ...Object.values(faders).map(f => f.el)),
-      el("div", { class: "foot" }, el("button", { class: "btn quiet", type: "button", onclick: () => queue({ identify: [fx.id] }) }, "Clignoter")));
+        el("span", { class: "swatch" }, el("span", { class: "box", html: CHECK })),
+        el("span", { class: "who" }, el("span", { class: "nm" }, fx.name), el("span", { class: "st" }))),
+      el("div", { class: "minis" }, dim.el, el("div", { class: "chans" }, ...Object.values(chans).map(f => f.el))));
     box.append(card);
   });
 }
@@ -899,11 +955,10 @@ function renderCards() {
     tg.setAttribute("aria-pressed", String(on));
     const txt = k > 0.004 ? `${colorName(st)}, ${Math.round(k * 100)} %` : "éteint";
     tg.setAttribute("aria-label", `${fx.name} : ${txt}. ${on ? "Coché" : "Pas coché"}`);
-    card.querySelector(".st").textContent = on ? "coché" : "";
+    card.querySelector(".st").textContent = state.effect ? "effet en cours" : txt.charAt(0).toUpperCase() + txt.slice(1);
     const sw = card.querySelector(".swatch");
     sw.classList.toggle("off", k <= 0.004);
     sw.style.background = k > 0.004 ? swatchBg(st, k) : "";
-    sw.querySelector(".cap").textContent = state.effect ? "effet en cours" : txt;
     const f = cardFaders[fx.id];
     if (f) { f.dim.set(base.dim ?? 0); for (const [c, fd] of Object.entries(f)) if (c !== "dim") fd.set(base[c] ?? 0); }
   });
@@ -1045,7 +1100,9 @@ function renderTools() {
   $("toolsWhy").hidden = n > 0;
   for (const c of $("tools").querySelectorAll(".body button, .body input, .body [tabindex]")) c.toggleAttribute("disabled", n === 0);
   $("temp").tabIndex = n ? 0 : -1;
-  $("toolsWho").textContent = n === 0 ? "" : n === config.fixtures.length ? "Tout le plateau" : n <= 3 ? names.join(", ") : `${n} spots`;
+  const all = n === config.fixtures.length;
+  $("toolsTitle").textContent = n === 0 ? "Aucun spot coché" : all ? "Tout le plateau" : n === 1 ? names[0] : `${n} spots`;
+  $("toolsWho").textContent = n > 1 && !all ? names.join(", ") : "";
   if (!n) return;
   const st = state.fixtures[ids[0]] || {};
   if (document.activeElement !== $("selDim")) $("selDim").value = st.dim ?? 0;
@@ -1055,22 +1112,24 @@ function renderTools() {
   $("tempMark").hidden = !k;
   if (k) { $("tempMark").style.left = ((k - KMIN) / (KMAX - KMIN) * 100) + "%"; temp.setAttribute("aria-valuenow", k); temp.setAttribute("aria-valuetext", k + " K, " + colorName(st)); }
   $("kOut").textContent = k ? `${colorName(st)} · ${k} K` : "";
+  if (tint) $("tintBox").open = true;   // une correction deja reglee reste visible
   if (document.activeElement !== $("tint")) $("tint").value = tint;
   const tt = tint === 0 ? "neutre" : tint < 0 ? `plus vert (${-tint})` : `plus rose (${tint})`;
   $("tintOut").textContent = tt; $("tint").setAttribute("aria-valuetext", tt);
 }
 
 /* ---------- effets ---------- */
+$("fxButtons").append(Object.assign(el("button", { type: "button", id: "fxStop", "aria-pressed": "true" }, "Aucun"), { onclick: () => { state.effect = null; queue({ effect: null }); render(); } }));
 for (const [id, label] of FX) {
-  const b = el("button", { class: "btn", type: "button", "data-fx": id, "aria-pressed": "false" }, label);
+  const b = el("button", { type: "button", "data-fx": id, "aria-pressed": "false" }, label);
   b.onclick = () => { state.effect = state.effect && state.effect.name === id ? null : { name: id, speed: +$("fxSpeed").value }; if (state.effect) fxPhase = 0; queue({ effect: state.effect }); render(); };
   $("fxButtons").append(b);
 }
-$("fxButtons").append(Object.assign(el("button", { class: "btn quiet", type: "button", id: "fxStop" }, "Arrêter l'effet"), { onclick: () => { state.effect = null; queue({ effect: null }); render(); } }));
 $("fxSpeed").oninput = e => { if (state.effect) { state.effect.speed = +e.target.value; queue({ effect: state.effect }); } renderFx(); };
 function renderFx() {
   for (const b of $("fxButtons").querySelectorAll("[data-fx]")) b.setAttribute("aria-pressed", String(!!state.effect && state.effect.name === b.dataset.fx));
-  $("fxStop").disabled = !state.effect;
+  $("fxStop").setAttribute("aria-pressed", String(!state.effect));
+  $("fxSpeedRow").hidden = !state.effect;   // la vitesse n'apparait que quand un effet tourne
   const sp = $("fxSpeed");
   if (state.effect && document.activeElement !== sp) sp.value = state.effect.speed;
   $("fxSpeedOut").textContent = (+sp.value).toFixed(1).replace(".", ",") + "×";

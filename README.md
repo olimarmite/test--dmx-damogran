@@ -42,14 +42,16 @@ Pensé pour quelqu'un qui n'y connaît rien en lumière : on coche des spots, pu
 - **Spots** : une carte par spot, avec sa vraie couleur en grand, son état en mots (« blanc chaud, 80 % ») et ses petits
   faders (luminosité, rouge, vert, bleu, lime). Les faders d'une carte ne règlent que ce spot.
   Toucher le haut de la carte le **coche** (bandeau ambre et coche) ; la barre « N spots cochés » dit toujours qui est coché.
-- **Pour les spots cochés** (panneau à droite, ou bouton « Régler ↓ » sur téléphone) : luminosité, couleurs nommées,
-  blancs **chaud / neutre / froid** (ou la bande de 2700 à 6500 K), correction « plus vert / plus rose » si la peau
-  paraît mal, canaux un par un pour les experts, et « Faire clignoter » pour repérer les spots dans la salle.
+- **Pour les spots cochés** (panneau à droite, ou bouton « Régler ↓ » sur téléphone), dans l'ordre d'usage : couleurs
+  nommées, blancs **chaud / neutre / froid** (ou la bande de 2700 à 6500 K), luminosité ; repliés en dessous, la
+  correction « plus vert / plus rose » si la peau paraît mal et les canaux un par un pour les experts ;
+  enfin « Faire clignoter » pour repérer les spots dans la salle.
   Sans spot coché, le panneau est grisé et explique quoi faire.
 - **Plan de scène** : les mêmes spots, placés comme dans la salle (lointain en haut, public en bas, jardin à gauche,
   cour à droite). « Disposer les spots » : touche un spot puis sa case (ou flèches) ; la grille se règle en colonnes et rangs.
-- **Ambiances** : « en scène » dit ce qui est allumé ; **GO** lance l'ambiance suivante (barre d'espace) ;
-  « + Enregistrer l'ambiance actuelle » garde la lumière telle quelle. **Lumière générale** et **Blackout** sont toujours en haut.
+- **Bande régie** (en haut, toujours visible sur ordinateur) : tout ce qui sert pendant le spectacle. « En scène » dit ce
+  qui est allumé ; **GO** lance l'ambiance suivante (barre d'espace) ; « + Enregistrer l'ambiance » garde la lumière telle
+  quelle ; **Lumière générale**, **Blackout**, la durée de transition et les effets sont juste à côté.
 - Raccourcis : Espace = GO, 1 à 9 = ambiance, B = blackout, Échap = tout décocher (désactivables dans Réglages > Clavier).
 
 ### Les blancs et le lime
