@@ -73,10 +73,6 @@
   .opts .btn[aria-pressed="true"] { background: var(--amber); color: var(--amber-ink); }
   a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   /* choix exclusif (transition, effet, type de lumiere) : etat choisi en relief, pas en ambre */
-  .seg { display: inline-grid; grid-auto-flow: column; gap: 2px; background: var(--ground); border-radius: 6px; padding: 3px; }
-  .seg button { min-height: 38px; border: 0; border-radius: 4px; background: transparent; color: var(--ink-2); cursor: pointer; font-family: var(--legend); font-size: var(--t-sm); letter-spacing: .02em; padding: 0 var(--s-3); white-space: nowrap; }
-  .seg button[aria-pressed="true"], .seg button[aria-selected="true"] { background: var(--raised); color: var(--ink); box-shadow: inset 0 -2px 0 var(--ink-2); }
-  .seg button:disabled { opacity: .45; cursor: not-allowed; }
   input[type=range] { width: 100%; accent-color: var(--ink-2); height: 32px; margin: 0; }
 
   /* ---- en-tete : identite et navigation seulement ---- */
@@ -249,7 +245,6 @@
   .qr svg { display: block; max-width: min(300px, 70vw); height: auto; }
   #rcLink { color: var(--ink); word-break: break-all; }
   .pane h3 { margin: 0; font: 600 var(--t-2xl)/1.1 var(--legend); letter-spacing: .01em; }
-  .card-box { background: var(--surface); border-radius: var(--r-card); padding: var(--s-4) var(--s-5); display: flex; flex-direction: column; gap: var(--s-3); }
   .help { font-size: var(--t-sm); color: var(--ink-2); margin: 0; max-width: 75ch; line-height: 1.5; }
   .help code, .steps code { color: var(--ink); font-size: var(--t-xs); }
   .tablewrap { overflow-x: auto; }
@@ -402,7 +397,7 @@
       </label>
       <button class="blackout" id="blackout" type="button" aria-pressed="false" title="Touche B">Blackout</button>
     </div>
-    <div class="band-sub" id="bandSub">
+    <div class="band-sub">
       <label class="grp"><span class="hint">Transition</span><select class="pick-sel" id="fades"></select></label>
       <label class="grp"><span class="hint">Effet</span><select class="pick-sel" id="fxSel"></select></label>
       <label class="grp" id="fxSpeedRow" hidden><span class="hint">Vitesse</span><input type="range" id="fxSpeed" min="0.25" max="3" step="0.05" value="1"><span class="num" id="fxSpeedOut">1,0×</span></label>
@@ -415,7 +410,7 @@
 <main id="main" tabindex="-1">
   <div class="work" id="work">
     <div class="content">
-      <div class="sechead selbar-m" id="selbar">
+      <div class="sechead selbar-m">
         <h2 id="secTitle">Spots</h2>
         <span class="count" id="selCount" role="status"></span>
         <span class="spacer"></span>
@@ -629,6 +624,7 @@ const PRESETS = [
 ];
 const QUICK_WHITES = [[2700, "Chaud"], [4000, "Neutre"], [6500, "Froid"]];
 const KMIN = 2700, KMAX = 6500;
+const PREVIEW_LAYOUT = ["R", "G", "B", "L"];   // pour dessiner les blancs des boutons et de la bande
 // canaux reglables a la main : cle d'etat, nom, couleur du repere, lettre dans « Canaux » (aucune = toujours)
 const CHANNELS = [["r", "Rouge", "#ff3b30"], ["g", "Vert", "#34d058"], ["b", "Bleu", "#3b6bff"], ["l", "Lime", "#c6dd3c", "L"], ["w", "Blanc", "#e8e2d6", "W"], ["a", "Ambre", "#ffa31a", "A"], ["u", "UV", "#9b6bff", "U"]];
 const SHORT = { r: "R", g: "V", b: "B", l: "L", w: "W", a: "A", u: "UV" };
@@ -636,9 +632,10 @@ const FX = [["chase", "Chase"], ["party", "C'est la fête"], ["applause", "Appla
 const FADES = [[0, "aucune"], [2, "2 s"], [5, "5 s"], [10, "10 s"]];
 const CHECK = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M2.5 7.5l3 3 6-7"/></svg>';
 
-let config = null, state = null, input = null, selected = new Set();
+let config = null, state = null, input = null, selected = new Set(), localIps = [], discovery = null;
 let pending = {}, sendTimer = null, lastEdit = 0, lastPackets = -1, lastScene = null;
 const $ = id => document.getElementById(id);
+const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
 function el(tag, attrs, ...kids) {
   const e = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs || {})) {
@@ -817,7 +814,7 @@ async function poll() {
     if (state.active_scene) lastScene = state.active_scene;
     if (snap.state.effect) fxPhase = snap.effect_phase;
     config = snap.config; input = snap.input;
-    window.localIps = snap.local_ips; window.discovery = snap.discovery;
+    localIps = snap.local_ips; discovery = snap.discovery;
     if (cfgChanged) { buildCards(); buildPlan(); buildSelRaw(); }
     if (view === "reglages" && !settingsLoaded) loadSettings();   // page ouverte directement sur les reglages
     render();
@@ -944,6 +941,13 @@ function renderScenes() {
     list.scrollLeft = on.offsetLeft - list.clientWidth / 2 + on.offsetWidth / 2;
   stripFade();
 }
+// bande des ambiances : fondu a droite tant qu'il en reste a voir
+function stripFade() {
+  const s = $("sceneList");
+  s.classList.toggle("more-right", s.scrollLeft + s.clientWidth < s.scrollWidth - 2);
+}
+$("sceneList").addEventListener("scroll", stripFade, { passive: true });
+window.addEventListener("resize", stripFade);
 function sceneApi(body) { return api("/api/scene", body).then(poll).catch(e => alert("Erreur : " + e.message)); }
 function recallScene(id) { sceneApi({ action: "recall", id, fade: state.fade }); }
 const go = () => { if (nextScene()) sceneApi({ action: "go", after: lastScene }); };
@@ -997,7 +1001,7 @@ function presentChannels(ids) {
 function buildCards() {
   const box = $("cards"); box.innerHTML = ""; cardFaders = {};
   if (!config.fixtures.length) { box.append(el("p", { class: "empty" }, "Aucun projecteur. Va dans Réglages > Projecteurs pour les ajouter ou les chercher.")); return; }
-  config.fixtures.forEach((fx, i) => {
+  config.fixtures.forEach(fx => {
     const faders = {};
     faders.dim = makeFader({ label: `Luminosité de ${fx.name}`, short: "Lum.", cls: "mini lum", fill: "#d9d2c5", onInput: v => setDim([fx.id], v) });
     for (const [k, name, color] of presentChannels([fx.id])) faders[k] = makeFader({ label: `${name} de ${fx.name}`, short: SHORT[k], cls: "mini", fill: color, onInput: v => setChannel([fx.id], k, v) });
@@ -1025,7 +1029,7 @@ function renderCards() {
     sw.classList.toggle("off", k <= 0.004);
     sw.style.background = k > 0.004 ? swatchBg(st, k) : "";
     const f = cardFaders[fx.id];
-    if (f) { f.dim.set(base.dim ?? 0); for (const [c, fd] of Object.entries(f)) if (c !== "dim") fd.set(base[c] ?? 0); }
+    if (f) for (const [c, fd] of Object.entries(f)) fd.set(base[c] ?? 0);
   });
 }
 
@@ -1134,14 +1138,14 @@ for (const [name, r, g, b] of PRESETS) {
   $("swatches").append(sw);
 }
 for (const [k, label] of QUICK_WHITES) {
-  const [r, g, b] = displayRgb(whiteVals(["R", "G", "B", "L"], k));
+  const [r, g, b] = displayRgb(whiteVals(PREVIEW_LAYOUT, k));
   const q = el("button", { type: "button", "aria-label": `Blanc ${label.toLowerCase()} (${k} K)` }, label, el("br"), el("small", {}, k + " K"));
   q.style.background = `rgb(${r},${g},${b})`;
   q.onclick = () => applyWhite(sel(), k, 0);
   $("quickWhites").append(q);
 }
 const temp = $("temp");
-temp.style.background = `linear-gradient(to right, ${[2700, 3200, 4000, 5000, 5600, 6500].map(k => { const [r, g, b] = displayRgb(whiteVals(["R", "G", "B", "L"], k)); return `rgb(${r},${g},${b}) ${(k - KMIN) / (KMAX - KMIN) * 100}%`; }).join(", ")})`;
+temp.style.background = `linear-gradient(to right, ${[2700, 3200, 4000, 5000, 5600, 6500].map(k => { const [r, g, b] = displayRgb(whiteVals(PREVIEW_LAYOUT, k)); return `rgb(${r},${g},${b}) ${(k - KMIN) / (KMAX - KMIN) * 100}%`; }).join(", ")})`;
 function tempPick(e) {
   const r = temp.getBoundingClientRect(), x = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
   applyWhite(sel(), KMIN + x * (KMAX - KMIN));
@@ -1196,13 +1200,6 @@ function renderFx() {
   if (state.effect && document.activeElement !== sp) sp.value = state.effect.speed;
   $("fxSpeedOut").textContent = (+sp.value).toFixed(1).replace(".", ",") + "×";
 }
-// bande des ambiances : fondu a droite tant qu'il en reste a voir
-function stripFade() {
-  const s = $("sceneList");
-  s.classList.toggle("more-right", s.scrollLeft + s.clientWidth < s.scrollWidth - 2);
-}
-$("sceneList").addEventListener("scroll", stripFade, { passive: true });
-window.addEventListener("resize", stripFade);
 
 /* ---------- telecommande telephone (P2P) ----------
    Le PC de regie (cette page, ouverte en local) s'inscrit sur le relais PeerJS et attend les telephones.
@@ -1336,7 +1333,7 @@ function showPane(p) {
   for (const b of $("subnav").querySelectorAll("button")) b.setAttribute("aria-current", String(b.dataset.pane === pane));
   for (const d of document.querySelectorAll(".pane")) d.hidden = d.dataset.pane !== pane;
   if (pane === "console") { stripsKey = ""; renderConsole(); }
-  if (history.replaceState) history.replaceState(null, "", "#reglages/" + pane);
+  history.replaceState(null, "", "#reglages/" + pane);
 }
 for (const b of $("subnav").querySelectorAll("button")) b.onclick = () => showPane(b.dataset.pane);
 let settingsLoaded = false;
@@ -1345,7 +1342,7 @@ function loadSettings() {
   settingsLoaded = true;
   $("cfgTarget").value = config.target_ip; $("cfgPort").value = config.port; $("cfgFps").value = config.fps;
   const s = $("cfgBind"); s.innerHTML = ""; s.append(el("option", { value: "" }, "Automatique"));
-  for (const ip of new Set([...(window.localIps || []), config.bind_ip].filter(Boolean))) s.append(el("option", { value: ip }, ip));
+  for (const ip of new Set([...localIps, config.bind_ip].filter(Boolean))) s.append(el("option", { value: ip }, ip));
   s.value = config.bind_ip || "";
   $("fxRows").innerHTML = ""; config.fixtures.forEach(f => $("fxRows").append(fxRow(f)));
   const inp = config.input || {};
@@ -1407,7 +1404,7 @@ function addDevice(d) {
 }
 let discKey = "";
 function renderDiscovery() {
-  const d = window.discovery; if (!d) return;
+  const d = discovery; if (!d) return;
   $("discover").disabled = d.running;
   $("discover").textContent = d.running ? "Recherche en cours…" : (d.nodes.length ? "Chercher à nouveau" : "Chercher");
   $("discPhase").textContent = d.phase || "";
@@ -1586,7 +1583,6 @@ function render() {
 }
 // animation des apercus pendant un effet : au plus 3 images par seconde (pas de flash a l'ecran),
 // et rien si le systeme demande moins d'animations
-const calm = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
 let fxClock = performance.now(), lastPaint = 0;
 (function tick(now) {
   if (state && config && state.effect) {

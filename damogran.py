@@ -34,10 +34,9 @@ CONFIG_PATH = os.path.join(HERE, "config.json")
 STATE_PATH = os.path.join(HERE, "state.json")
 UI_PATH = os.path.join(HERE, "ui.html")
 
-COLOR_TOKENS = ("R", "G", "B")
+LED_TOKENS = ("R", "G", "B", "W", "A", "U", "L")   # lettres de canal : rouge, vert, bleu, blanc, ambre, UV, lime
 FADE_KEYS = ("dim", "r", "g", "b", "w", "a", "u", "l")   # valeurs fondues lors du rappel d'une memoire
 SCENE_KEYS = FADE_KEYS + ("h", "s", "k", "tint")   # k : temperature du blanc choisi (affichage)
-EXTRA_TOKENS = ("W", "A", "U", "L")  # blanc, ambre, UV, lime
 
 DEFAULT_CONFIG = {
     "target_ip": "2.255.255.255",
@@ -251,6 +250,17 @@ def save_json(path, data):
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
     os.replace(tmp, path)
+
+
+def clean_remote(r):
+    """Telecommande telephone : identifiant du PC sur le relais PeerJS, cle du QR code, adresse de la page."""
+    if not isinstance(r, dict):
+        return None
+    tok = lambda v: re.sub(r"[^A-Za-z0-9_-]", "", str(v or ""))[:64]
+    page = str(r.get("page") or "").strip()[:300]
+    if not re.match(r"^https?://[^\s\"'<>]+$", page):
+        page = ""
+    return {"on": bool(r.get("on")), "id": tok(r.get("id")), "key": tok(r.get("key")), "page": page}
 
 
 def parse_layout(layout):
@@ -549,13 +559,13 @@ class Engine:
     def __init__(self):
         self.lock = threading.Lock()
         self.config = load_json(CONFIG_PATH, None) or json.loads(json.dumps(DEFAULT_CONFIG))
+        self.config.setdefault("input", default_input(self.config["fixtures"]))
+        self.config.setdefault("grid", {"cols": 12, "rows": 7})
         self.state = load_json(STATE_PATH, None) or {}
-        self.state.setdefault("master", 255)
-        self.state.setdefault("blackout", False)
-        self.state.setdefault("fixtures", {})
-        self.state.setdefault("scenes", [])
-        self.state.setdefault("fade", 2.0)
-        self.state.setdefault("active_scene", None)
+        for k, v in (("master", 255), ("blackout", False), ("fixtures", {}), ("scenes", []),
+                     ("fade", 2.0), ("active_scene", None), ("effect", None)):
+            self.state.setdefault(k, v)
+        self.state.pop("speed", None)   # ancienne cle, plus utilisee
         self.fade = None         # fondu en cours : {"from", "to", "t0", "dur"}
         self.raw = None          # {"universe", "address", "value"} testeur de canal
         self.identify = {}       # id -> timestamp de fin
@@ -567,15 +577,13 @@ class Engine:
         self.wake = threading.Event()
         self.rx_ok = False       # True si on ecoute bien le port Art-Net (necessaire a la decouverte)
         self.discovery = Discovery()
-        self.config.setdefault("input", default_input(self.config["fixtures"]))
         self.in_values = bytearray(512)   # derniere valeur recue de la console, par canal
         self.in_seen = 0.0                # heure du dernier paquet console
         self.in_source = ""
         self.xbase = {}                   # transitions manuelles : etat de depart par memoire
         self.midi_vals = {}               # derniere valeur recue par commande MIDI ("cc7", "n36")
-        self.config.setdefault("grid", {"cols": 12, "rows": 7})
-        self.state.setdefault("effect", None)   # {"name", "speed"} ou None
         self.effect_phase = 0.0
+        self.fx_speed = 1.0               # vitesse donnee par un fader console, pour le prochain effet lance
         self.effect_clock = time.time()
 
     # ---- sortie Art-Net -------------------------------------------------
@@ -629,12 +637,12 @@ class Engine:
                 dim = 0.0
             vals = {"D": dim * 255}
             col_scale = 1.0 if has_dim else dim
-            for t in COLOR_TOKENS + EXTRA_TOKENS:
+            for t in LED_TOKENS:
                 vals[t] = st.get(t.lower(), 0) * col_scale
             ident = self.identify.get(fx["id"], 0)
             if ident > now:
                 on = int(now * 6) % 2 == 0
-                vals = {t: (255 if on else 0) for t in ("D",) + COLOR_TOKENS + EXTRA_TOKENS}
+                vals = {t: (255 if on else 0) for t in ("D",) + LED_TOKENS}
             base = int(fx.get("address", 1)) - 1
             for i, tok in enumerate(layout):
                 ch = base + i
@@ -651,8 +659,7 @@ class Engine:
 
     @staticmethod
     def artdmx(universe, data, seq):
-        return (b"Art-Net\x00" + struct.pack("<H", 0x5000) + struct.pack(">H", 14)
-                + bytes([seq, 0]) + struct.pack("<H", universe & 0x7FFF)
+        return (art_header(OP_DMX) + bytes([seq, 0]) + struct.pack("<H", universe & 0x7FFF)
                 + struct.pack(">H", len(data)) + bytes(data))
 
     def run(self):
@@ -699,7 +706,7 @@ class Engine:
                 except OSError:
                     break
                 with self.lock:
-                    if data[8:10] == b"\x00\x50":   # ArtDmx : peut-etre la console
+                    if data[8:10] == struct.pack("<H", OP_DMX):   # ArtDmx : peut-etre la console
                         self._console_packet(data, addr)
                     else:
                         self.discovery.on_packet(data, addr, time.time())
@@ -748,13 +755,13 @@ class Engine:
             self._xfade(arg, v, old)
         elif kind == "fx":   # au-dela de la moitie : l'effet tourne ; en dessous : il s'arrete
             if v >= 128 > old:
-                self._set_effect({"name": arg, "speed": (self.state.get("effect") or {}).get("speed", 1.0)})
+                self._set_effect({"name": arg, "speed": self.fx_speed})
             elif old >= 128 > v and (self.state.get("effect") or {}).get("name") == arg:
                 self._set_effect(None)
         elif kind == "fxspeed":
-            self.state["speed"] = round(0.25 + v * 2.75 / 255, 2)
+            self.fx_speed = round(0.25 + v * 2.75 / 255, 2)
             if self.state.get("effect"):
-                self.state["effect"]["speed"] = self.state["speed"]
+                self.state["effect"]["speed"] = self.fx_speed
         elif kind in ("dim", "white", "hue") and targets:
             self.fade = None
             self.state["active_scene"] = None
@@ -959,7 +966,7 @@ class Engine:
             self.dirty = True
         self.wake.set()
 
-    def start_discovery(self):
+    def start_discovery(self, _body=None):
         with self.lock:
             if not self.rx_ok:
                 self.sock_key = None  # MagicQ a peut-etre ete ferme depuis : on retente le port 6454
@@ -997,17 +1004,6 @@ class Engine:
         self.wake.set()
 
 
-def clean_remote(r):
-    """Telecommande telephone : identifiant du PC sur le relais PeerJS, cle du QR code, adresse de la page."""
-    if not isinstance(r, dict):
-        return None
-    tok = lambda v: re.sub(r"[^A-Za-z0-9_-]", "", str(v or ""))[:64]
-    page = str(r.get("page") or "").strip()[:300]
-    if not re.match(r"^https?://[^\s\"'<>]+$", page):
-        page = ""
-    return {"on": bool(r.get("on")), "id": tok(r.get("id")), "key": tok(r.get("key")), "page": page}
-
-
 ENGINE = None
 LOCAL_IPS = []
 
@@ -1034,26 +1030,17 @@ class Handler(BaseHTTPRequestHandler):
         else:
             self._send(404, {"error": "not found"})
 
+    ROUTES = {"/api/state": "patch_state", "/api/config": "set_config", "/api/input": "set_input",
+              "/api/layout": "set_layout", "/api/midi": "midi_input", "/api/scene": "scene_action",
+              "/api/discover": "start_discovery"}
+
     def do_POST(self):
         try:
-            n = int(self.headers.get("Content-Length") or 0)
-            body = json.loads(self.rfile.read(n) or b"{}")
-            if self.path == "/api/state":
-                ENGINE.patch_state(body)
-            elif self.path == "/api/config":
-                ENGINE.set_config(body)
-            elif self.path == "/api/input":
-                ENGINE.set_input(body)
-            elif self.path == "/api/layout":
-                ENGINE.set_layout(body)
-            elif self.path == "/api/midi":
-                ENGINE.midi_input(body)
-            elif self.path == "/api/scene":
-                ENGINE.scene_action(body)
-            elif self.path == "/api/discover":
-                ENGINE.start_discovery()
-            else:
+            action = self.ROUTES.get(self.path)
+            if not action:
                 return self._send(404, {"error": "not found"})
+            n = int(self.headers.get("Content-Length") or 0)
+            getattr(ENGINE, action)(json.loads(self.rfile.read(n) or b"{}"))
             self._send(200, {"ok": True})
         except Exception as e:  # renvoie l'erreur a l'interface plutot que de planter
             self._send(400, {"error": str(e)})

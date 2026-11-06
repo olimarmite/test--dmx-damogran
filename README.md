@@ -85,7 +85,7 @@ Master et Blackout restent actifs. Sur la console, un fader peut lancer un effet
 
 ## Télécommande téléphone (même en 4G/5G)
 
-Le téléphone pilote Damogran en direct (pair à pair, WebRTC), sans être sur le réseau de la salle et sans tunnel SSH.
+Le téléphone pilote Damogran en direct (pair à pair, WebRTC), sans être sur le réseau de la salle.
 
 **Une seule fois : mettre en ligne la page télécommande.** C'est le petit fichier `remote/index.html`, une page statique
 (elle ne contient pas l'interface : le téléphone la reçoit du PC, toujours à jour).
