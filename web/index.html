@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Damogran</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a class="skip" href="#main">Aller au contenu</a>
+<header>
+  <h1>Damogran</h1>
+  <nav class="views" aria-label="Écrans">
+    <a href="#ambiances" data-view="ambiances" class="m-only">Ambiances</a>
+    <a href="#spots" data-view="spots">Spots</a>
+    <a href="#plan" data-view="plan">Plan<span class="d-only">&nbsp;de scène</span></a>
+  </nav>
+  <span class="spacer"></span>
+  <div class="status">
+    <span class="chip net" role="status"><span class="dot" id="dot"></span><span id="statusText">connexion…</span></span>
+    <a class="chip" href="#reglages/console"><span class="dot" id="consoleDot"></span><span id="consoleText">Console</span></a>
+    <a class="chip" href="#reglages/phone" id="rcChip" hidden><span class="dot ok"></span><span id="rcChipText">Téléphone</span></a>
+  </div>
+  <a class="btn text" href="#reglages" id="settingsLink">Réglages</a>
+</header>
+
+<!-- bande regie : ce qui sert pendant le spectacle, toujours sous la main -->
+<section class="band" id="band" aria-label="Régie">
+  <div class="band-in">
+    <div class="show">
+      <div class="now">
+        <span class="eyebrow">En scène</span>
+        <span class="name" id="liveName" role="status"></span>
+        <span class="flags"><span id="liveModified" hidden>modifiée à la main</span><span class="fx" id="liveEffect" hidden></span></span>
+      </div>
+      <button class="go" id="goBtn" type="button"><b>GO</b><span id="goLabel"></span></button>
+      <div class="cues" id="cues" aria-label="Ambiances enregistrées">
+        <div class="cue-strip" id="sceneList"></div>
+        <div class="tile add"><button type="button" id="sceneNew">+ Enregistrer l'ambiance</button></div>
+      </div>
+    </div>
+    <div class="safety">
+      <label class="gm" title="Règle toute la lumière d'un coup, sans changer les réglages des spots">
+        <span class="label">Lumière générale</span>
+        <input type="range" id="master" min="0" max="255">
+        <span class="num" id="masterOut">100 %</span>
+      </label>
+      <button class="blackout" id="blackout" type="button" aria-pressed="false" title="Touche B">Blackout</button>
+    </div>
+    <div class="band-sub">
+      <label class="grp"><span class="hint">Transition</span><select class="pick-sel" id="fades"></select></label>
+      <label class="grp"><span class="hint">Effet</span><select class="pick-sel" id="fxSel"></select></label>
+      <label class="grp" id="fxSpeedRow" hidden><span class="hint">Vitesse</span><input type="range" id="fxSpeed" min="0.25" max="3" step="0.05" value="1"><span class="num" id="fxSpeedOut">1,0×</span></label>
+      <span class="spacer"></span>
+      <span class="hint" id="goKey">Espace : GO · B : blackout</span>
+    </div>
+  </div>
+</section>
+
+<main id="main" tabindex="-1">
+  <div class="work" id="work">
+    <div class="content">
+      <div class="sechead selbar-m">
+        <h2 id="secTitle">Spots</h2>
+        <span class="count" id="selCount" role="status"></span>
+        <span class="spacer"></span>
+        <button class="btn text" type="button" id="selAll">Tout cocher</button>
+        <button class="btn primary" type="button" id="gotoTools" hidden>Régler ↓</button>
+      </div>
+
+      <!-- vue spots : une carte par spot, la couleur d'abord -->
+      <section id="view-spots" aria-labelledby="secTitle">
+        <div class="cards" id="cards"></div>
+        <p class="help" style="margin-top:12px">Touche la couleur d'un spot pour le cocher. Ses petits faders ne règlent que lui ; le panneau de droite règle tous les spots cochés.</p>
+      </section>
+
+      <!-- vue plan : les spots places comme dans la salle -->
+      <section id="view-plan" aria-label="Plan de scène" hidden style="display:flex;flex-direction:column;gap:12px">
+        <div class="head">
+          <span class="hint">Vu du dessus. Touche un spot pour le cocher.</span>
+          <span class="spacer"></span>
+          <button class="btn dashed" id="arrangeBtn" type="button" aria-pressed="false">Disposer les spots</button>
+        </div>
+        <div class="arrange" id="arrangeBar" hidden>
+          <p class="help" style="flex:1 1 260px;color:var(--ink)" id="arrangeHint" role="status"></p>
+          <span class="stepper"><span class="label">Colonnes</span><button type="button" id="colMinus" aria-label="Une colonne de moins">−</button><output id="colOut" aria-live="polite"></output><button type="button" id="colPlus" aria-label="Une colonne de plus">+</button></span>
+          <span class="stepper"><span class="label">Rangs</span><button type="button" id="rowMinus" aria-label="Un rang de moins">−</button><output id="rowOut" aria-live="polite"></output><button type="button" id="rowPlus" aria-label="Un rang de plus">+</button></span>
+        </div>
+        <div class="plan-wrap">
+          <div class="plan">
+            <span class="edge" style="text-align:center">LOINTAIN (fond de scène)</span>
+            <div class="mid">
+              <span class="edge vert" style="transform:rotate(180deg)">JARDIN (gauche)</span>
+              <div class="grid" id="grid"><div class="cells" id="cells" hidden></div></div>
+              <span class="edge vert">COUR (droite)</span>
+            </div>
+            <div class="row" style="justify-content:space-between"><span class="edge">PUBLIC</span><span class="hint" id="gridSize"></span></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- reglage des spots coches : par ordre d'usage -->
+    <aside class="side">
+      <section class="tools" id="tools" aria-labelledby="toolsTitle">
+        <div>
+          <span class="eyebrow">Régler les spots cochés</span>
+          <div class="title" id="toolsTitle"></div>
+          <div class="names" id="toolsWho"></div>
+        </div>
+        <p class="why" id="toolsWhy">Coche un ou plusieurs spots à gauche (ou « Tout cocher ») : leur couleur et leur luminosité se règlent ici.</p>
+        <div class="body">
+          <div class="group">
+            <span class="label" id="colLbl">Couleur</span>
+            <div class="sws" role="group" aria-labelledby="colLbl" id="swatches"></div>
+          </div>
+          <div class="group">
+            <span class="row2"><span class="label">Blanc</span><span class="hint" id="kOut"></span></span>
+            <div class="quick" id="quickWhites"></div>
+          </div>
+          <div class="group">
+            <label for="selDim" class="row2"><span class="label">Luminosité</span><span class="num" style="font-size:var(--t-lg)" id="selDimOut"></span></label>
+            <input type="range" id="selDim" min="0" max="255">
+          </div>
+          <div>
+            <details class="more" id="tintBox">
+              <summary>Affiner le blanc</summary>
+              <div class="inner">
+                <span class="label">Plus chaud ou plus froid</span>
+                <div class="temp" id="temp" role="slider" tabindex="0" aria-label="Température du blanc, de chaud à froid" aria-valuemin="2700" aria-valuemax="6500"><span class="mark" id="tempMark"></span></div>
+                <span class="scale"><span>chaud · bougie</span><span>froid · ciel</span></span>
+                <label for="tint" class="row2"><span class="label">Peau trop verte ou trop rose</span><span id="tintOut" class="hint" style="color:var(--ink)"></span></label>
+                <input type="range" id="tint" min="-100" max="100" value="0">
+                <span class="scale"><span>plus vert</span><span>plus rose</span></span>
+              </div>
+            </details>
+            <details class="more">
+              <summary>Canaux un par un (pour experts)</summary>
+              <div class="faders" id="selRaw"></div>
+            </details>
+          </div>
+          <button class="btn" type="button" id="identify">Faire clignoter pour les repérer</button>
+        </div>
+      </section>
+    </aside>
+  </div>
+
+  <!-- ===================== REGLAGES ===================== -->
+  <section id="view-reglages" aria-label="Réglages" hidden>
+    <div class="settings">
+      <nav class="subnav" aria-label="Réglages" id="subnav">
+        <button type="button" data-pane="fixtures">Projecteurs</button>
+        <button type="button" data-pane="console">Console &amp; MIDI</button>
+        <button type="button" data-pane="network">Réseau Art-Net</button>
+        <button type="button" data-pane="phone">Téléphone</button>
+        <button type="button" data-pane="keys">Clavier</button>
+        <a class="btn quiet" href="#spots" style="margin-top:12px">← Retour aux spots</a>
+      </nav>
+
+      <div class="pane" data-pane="fixtures">
+        <h3>Projecteurs</h3>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Nom</th><th>Univers</th><th>Adresse</th><th>Canaux</th><th><span hidden>Retirer</span></th></tr></thead>
+            <tbody id="fxRows"></tbody>
+          </table>
+        </div>
+        <div class="row"><button class="btn" id="addFx" type="button">+ Ajouter un projecteur</button><span class="spacer"></span><button class="btn primary" id="saveFx" type="button">Enregistrer</button></div>
+        <div class="warn" id="overlap"></div>
+        <p class="help"><b>Univers</b> : numéro Art-Net, à partir de 0 (l'univers 1 de MagicQ est en général l'Art-Net 0).
+          <b>Canaux</b> : l'ordre des canaux, séparés par des virgules. <code>D</code> luminosité, <code>R</code> <code>G</code> <code>B</code>,
+          <code>L</code> lime, <code>W</code> blanc, <code>A</code> ambre, <code>U</code> UV, un nombre = valeur fixe, <code>-</code> = 0.
+          ETC ColorSource en mode Dir (6 canaux) : <code>D,R,G,B,L,0</code>. En mode 5ch : <code>D,R,G,B,0</code>.</p>
+        <div class="panel" style="display:flex;flex-direction:column;gap:10px">
+          <h2>Chercher les projecteurs</h2>
+          <div class="row"><button class="btn" id="discover" type="button">Chercher</button><span class="hint" id="discPhase"></span></div>
+          <div class="err" id="discError"></div>
+          <div id="discNodes"></div>
+          <div id="discDevices"></div>
+          <p class="help">Les nodes Art-Net répondent toujours. Les projecteurs ne sont trouvés que s'ils gèrent le RDM (mode et adresse réels). MagicQ doit être fermé pendant la recherche.</p>
+        </div>
+      </div>
+
+      <div class="pane" data-pane="console" hidden>
+        <h3>Console &amp; MIDI</h3>
+        <p class="help">Choisis un fader sur le dessin, puis ce qu'il commande. Un fader n'agit que quand tu le bouges : l'écran garde la main le reste du temps. Blackout, GO et effets se déclenchent quand le fader passe la moitié.</p>
+        <div class="sources" id="sources"></div>
+        <div class="row" id="mqConn">
+          <label class="switch"><input type="checkbox" id="inEnabled"> Écouter la console</label>
+          <label class="row" style="gap:6px"><span class="hint">Univers Art-Net de la console</span><input type="number" id="inUniverse" min="0" max="32767" style="width:84px"></label>
+          <span class="hint" id="inStatus"></span>
+        </div>
+        <div class="warn" id="inConflict" hidden>Cet univers est aussi celui des projecteurs : choisis-en un autre (par exemple 1), sinon Damogran s'écouterait lui-même.</div>
+        <div class="desk-wrap">
+          <div class="desk">
+            <div class="head"><h2 id="deskName"></h2><span class="spacer"></span><button class="btn" id="learnBtn" type="button" aria-pressed="false">Apprendre un fader</button></div>
+            <div class="board"><div class="strips" id="strips"></div></div>
+            <p class="help" id="learnHint" role="status"></p>
+          </div>
+          <div class="panel assign" aria-labelledby="assignTitle">
+            <div><h2 id="assignTitle" class="big-title"></h2><span class="hint" id="assignNow"></span></div>
+            <div id="assignGroups" style="display:flex;flex-direction:column;gap:14px"></div>
+          </div>
+        </div>
+        <details class="panel">
+          <summary class="legend" style="cursor:pointer;min-height:32px;display:flex;align-items:center">Préparer MagicQ (une seule fois)</summary>
+          <ol class="steps" style="margin-top:12px">
+            <li><code>Setup › DMX I/O</code> : univers 1 (les projecteurs) sur <b>None</b>, pour que MagicQ ne se batte pas avec Damogran. Univers 2 en <b>Art-Net</b>, univers Art-Net 1, en broadcast.</li>
+            <li><code>Patch</code> : ajoute 10 <b>Generic Dimmer</b> sur l'univers 2, adresses 1 à 10.</li>
+            <li>Pour chaque fader <i>n</i> de la Mini Connect : sélectionne le dimmer <i>n</i>, mets-le à 100 %, <code>Record</code>, puis le bouton <b>S</b> du fader <i>n</i>. <code>Clear</code>.</li>
+            <li>Laisse MagicQ ouvert avec la Mini Connect branchée, et lance Damogran à côté.</li>
+          </ol>
+        </details>
+      </div>
+
+      <div class="pane" data-pane="network" hidden>
+        <h3>Réseau Art-Net</h3>
+        <div class="form">
+          <label>Envoyer à (IP ou broadcast) <input type="text" id="cfgTarget" placeholder="10.255.255.255"></label>
+          <label>Carte réseau de ce PC <select id="cfgBind"></select></label>
+          <label>Port <input type="number" id="cfgPort" min="1" max="65535"></label>
+          <label>Images par seconde <input type="number" id="cfgFps" min="1" max="44"></label>
+        </div>
+        <div class="row"><span class="spacer"></span><button class="btn primary" id="saveNet" type="button">Enregistrer</button></div>
+        <p class="help">Un seul node : son IP. Plusieurs : le broadcast du réseau (<code>10.255.255.255</code> si le PC est en 10.x.x.x, <code>2.255.255.255</code> en 2.x.x.x).</p>
+        <div class="panel" style="display:flex;flex-direction:column;gap:10px">
+          <h2>Testeur de canal</h2>
+          <div class="tester">
+            <label class="lbl">Univers <input type="number" id="rawUni" min="0" value="0"></label>
+            <label class="lbl">Canal <input type="number" id="rawAddr" min="1" max="512" value="1"></label>
+            <label class="lbl wide">Valeur <span class="row" style="flex-wrap:nowrap"><input type="range" id="rawVal" min="0" max="255" value="0"><span class="num" id="rawOut" style="width:32px">0</span></span></label>
+            <button class="btn" id="rawStop" type="button">Arrêter</button>
+          </div>
+          <p class="help">Pour trouver un projecteur à l'aveugle. S'ajoute par-dessus le reste, s'arrête quand on quitte les réglages.</p>
+        </div>
+      </div>
+
+      <div class="pane" data-pane="phone" hidden>
+        <h3>Télécommande téléphone</h3>
+        <p class="help" id="rcOnPhone" hidden>Tu es sur la télécommande : elle s'active et se règle sur le PC de régie.</p>
+        <p class="help" id="rcNotHere" hidden>La télécommande s'active depuis le PC de régie, dans Damogran ouvert à l'adresse <code>127.0.0.1</code>.</p>
+        <div id="rcBox" style="display:flex;flex-direction:column;gap:var(--s-4)">
+          <p class="help" style="margin:0">Pilote depuis ton téléphone, même en 4G/5G : active, puis scanne le code. Ce PC doit avoir Internet, et cette page doit rester ouverte (en arrière-plan, ça va).</p>
+          <div class="form"><label>Adresse de la page télécommande <input type="url" id="rcPage" placeholder="https://damogran.pages.dev/" spellcheck="false"></label></div>
+          <div class="row"><button class="btn primary" id="rcToggle" type="button">Activer</button><button class="btn" id="rcNew" type="button" hidden>Nouveau code</button></div>
+          <p class="help" role="status" id="rcStatus" style="margin:0;color:var(--ink)"></p>
+          <div class="qr" id="rcQr" hidden></div>
+          <p class="help" id="rcLinkRow" hidden style="margin:0">Ou ouvre ce lien sur le téléphone : <a id="rcLink" target="_blank" rel="noopener"></a></p>
+          <p class="help" style="margin:0">Le code donne la main sur la lumière : ne le montre qu'aux gens de confiance. « Nouveau code » déconnecte les téléphones et rend l'ancien inutilisable.</p>
+        </div>
+      </div>
+
+      <div class="pane" data-pane="keys" hidden>
+        <h3>Clavier</h3>
+        <label class="switch"><input type="checkbox" id="keysOn"> Raccourcis clavier</label>
+        <p class="help">Espace : GO · 1 à 9 : rappeler une ambiance · B : blackout · Échap : tout décocher. À couper si tu pilotes avec la saisie vocale ou si quelqu'un tape à côté. Réglage propre à ce navigateur.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<dialog id="sceneDlg" aria-labelledby="sceneDlgTitle">
+  <div class="dlg">
+    <h2 id="sceneDlgTitle" class="big-title" style="font-size:20px"></h2>
+    <label class="lbl">Nom <input type="text" id="sceneName" maxlength="30"></label>
+    <div class="row" id="sceneDlgBtns"></div>
+  </div>
+</dialog>
+
+<script src="js/base.js"></script>
+<script src="js/color.js"></script>
+<script src="js/api.js"></script>
+<script src="js/fader.js"></script>
+<script src="js/regie.js"></script>
+<script src="js/spots.js"></script>
+<script src="js/plan.js"></script>
+<script src="js/remote.js"></script>
+<script src="js/settings.js"></script>
+<script src="js/console.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

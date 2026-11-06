@@ -1,7 +1,7 @@
 # Damogran
 
 Petite console web pour piloter des spots RGB en Art-Net (dimmer + couleur), à la place de MagicQ.
-Un seul fichier Python, sans dépendance.
+Python standard, sans dépendance.
 
 ## Démarrage (Windows, sans droits admin)
 
@@ -122,3 +122,18 @@ et ses faders et boutons s'affectent de la même façon dans Réglages > Console
 Un fader n'agit que quand on le bouge : à la connexion, Damogran prend la position des faders sans rien changer.
 MagicQ et Damogran tournent alors sur le même PC : c'est à tester avant un spectacle.
 
+## Structure du code
+
+```
+damogran.py          point d'entrée (lance le serveur)
+app/config.py        config.json / state.json, valeurs par défaut
+app/colors.py        couleurs des LED, blancs calculés avec le lime
+app/effects.py       Chase, C'est la fête, Applaudissements
+app/artnet.py        paquets Art-Net et RDM
+app/discovery.py     découverte des nodes (ArtPoll) et des projecteurs (RDM)
+app/engine.py        état du plateau, sortie Art-Net, console / MIDI, ambiances et fondus
+app/web.py           serveur web et API JSON
+web/index.html       la page (le serveur y recopie style.css et js/*.js : une seule page servie)
+web/js/              un fichier par partie de l'écran (régie, spots, plan, réglages, console, télécommande…)
+remote/index.html    page télécommande à héberger (Cloudflare Pages ou équivalent)
+```
