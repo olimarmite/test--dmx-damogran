@@ -77,7 +77,7 @@
   .seg button { min-height: 38px; border: 0; border-radius: 4px; background: transparent; color: var(--ink-2); cursor: pointer; font-family: var(--legend); font-size: var(--t-sm); letter-spacing: .02em; padding: 0 var(--s-3); white-space: nowrap; }
   .seg button[aria-pressed="true"], .seg button[aria-selected="true"] { background: var(--raised); color: var(--ink); box-shadow: inset 0 -2px 0 var(--ink-2); }
   .seg button:disabled { opacity: .45; cursor: not-allowed; }
-  input[type=range] { width: 100%; accent-color: var(--amber); height: 32px; margin: 0; }
+  input[type=range] { width: 100%; accent-color: var(--ink-2); height: 32px; margin: 0; }
 
   /* ---- en-tete : identite et navigation seulement ---- */
   header { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-5);
@@ -105,7 +105,10 @@
   .now .name { font: 600 var(--t-lg)/1.15 var(--legend); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .now .flags { display: flex; flex-wrap: wrap; gap: var(--s-1) var(--s-2); font-size: var(--t-xs); color: var(--ink-2); }
   .now .flags .fx { color: var(--ink); }
-  .cues { display: flex; gap: var(--s-2); align-items: stretch; overflow-x: auto; min-width: 0; flex: 1; padding: 2px; }
+  .cues { display: flex; gap: var(--s-2); align-items: stretch; min-width: 0; flex: 1; }
+  .cue-strip { position: relative; display: flex; gap: var(--s-2); overflow-x: auto; min-width: 0; padding: 2px; scrollbar-width: thin; }
+  .cue-strip.more-right { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent); }
+  .cues > .tile.add { margin: 2px 0; width: 128px; }
   .tile { flex: none; width: 150px; display: flex; border-radius: 8px; background: var(--surface); overflow: hidden; }
   .tile.on { box-shadow: inset 0 0 0 2px var(--ink); }
   .tile .pick { flex: 1; min-width: 0; min-height: 72px; display: flex; flex-direction: column; justify-content: center; gap: 6px; padding: var(--s-2) var(--s-3); background: none; border: 0; cursor: pointer; text-align: left; color: inherit; }
@@ -117,7 +120,7 @@
   .tile .mini i { width: 10px; height: 10px; border-radius: 50%; }
   .tile .edit { background: none; border: 0; width: 36px; color: var(--ink-3); cursor: pointer; font-size: var(--t-lg); }
   .tile .edit:hover { color: var(--ink); }
-  .tile.add { background: transparent; box-shadow: inset 0 0 0 1px var(--line); }
+  .tile.add { background: transparent; box-shadow: inset 0 0 0 1px var(--ink-3); }
   .tile.add button { width: 100%; min-height: 72px; background: none; border: 0; color: var(--ink-2); cursor: pointer; font-size: var(--t-sm); padding: var(--s-2); }
   .tile.add button:hover { color: var(--ink); }
   .safety { display: flex; align-items: center; gap: var(--s-4); }
@@ -128,6 +131,8 @@
     font: 600 var(--t-md)/1 var(--legend); letter-spacing: .14em; text-transform: uppercase; }
   .blackout[aria-pressed="true"] { background: var(--red); color: #fff; }
   .band-sub { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-5); font-size: var(--t-sm); }
+  .band-opts { display: contents; }
+  .band-more { display: none; }
   .band-sub .grp { display: flex; align-items: center; gap: var(--s-2); }
   .band-sub input[type=range] { width: 120px; }
 
@@ -311,7 +316,27 @@
     .band-sub .seg { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; }
     .band-sub .seg button { flex: 1 0 auto; }
     .band-sub input[type=range] { flex: 1; width: auto; }
-    .status .net { display: none; }
+    .status .chip > span:not(.dot) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    .status .chip { min-height: 44px; min-width: 44px; justify-content: center; }
+    .status .chip.net { min-width: 0; }
+    .status { flex-wrap: nowrap; gap: 0; }
+    nav.views a { white-space: nowrap; }
+    #fxButtons { display: grid; grid-auto-flow: row; grid-template-columns: 1fr 1fr; }
+    header { flex-wrap: nowrap; gap: var(--s-2); }
+    header h1 { display: none; }                       /* l'onglet dit deja ou l'on est */
+    nav.views a { padding: 0 var(--s-2); }
+    .status .dot { width: 10px; height: 10px; }
+    .band-sub { gap: var(--s-2); }
+    .band-more { display: flex; width: 100%; min-height: 44px; align-items: center; justify-content: space-between; gap: var(--s-2); padding: 0 var(--s-3); border: 0; border-radius: 6px; background: var(--surface); color: var(--ink-2); font: var(--t-sm)/1.2 var(--legend); text-align: left; cursor: pointer; }
+    .band-more[aria-expanded="true"] .chev { transform: rotate(180deg); }
+    .band-opts { display: none; }
+    .band-sub.open .band-opts { display: flex; flex-direction: column; gap: var(--s-3); width: 100%; }
+    .band-sub > .spacer, #goKey { display: none !important; }
+    .seg button { min-height: 44px; }
+    input[type=range] { height: 44px; }
+    .tile .edit { width: 44px; }
+    .cues > .tile.add { width: 96px; }
+    .card .minis .chans { display: none; }
     .selbar-m { position: sticky; top: 0; z-index: 15; background: var(--ground); padding: var(--s-2) 0; box-shadow: 0 8px 12px -8px #000; }
     .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-2); }
     .settings { grid-template-columns: minmax(0, 1fr); gap: var(--s-4); }
@@ -349,7 +374,7 @@
       </div>
       <button class="go" id="goBtn" type="button"><b>GO</b><span id="goLabel"></span></button>
       <div class="cues" id="cues" aria-label="Ambiances enregistrées">
-        <div style="display:flex;gap:8px" id="sceneList"></div>
+        <div class="cue-strip" id="sceneList"></div>
         <div class="tile add"><button type="button" id="sceneNew">+ Enregistrer l'ambiance</button></div>
       </div>
     </div>
@@ -361,10 +386,13 @@
       </label>
       <button class="blackout" id="blackout" type="button" aria-pressed="false" title="Touche B">Blackout</button>
     </div>
-    <div class="band-sub">
+    <div class="band-sub" id="bandSub">
+      <button class="band-more" id="bandMore" type="button" aria-expanded="false" aria-controls="bandOpts"><span id="bandMoreTxt"></span><span aria-hidden="true" class="chev">▾</span></button>
+      <div class="band-opts" id="bandOpts">
       <span class="grp"><span class="hint" id="fadeLbl">Transition</span><span class="seg" role="group" aria-labelledby="fadeLbl" id="fades"></span></span>
       <span class="grp"><span class="hint" id="fxLbl">Effet</span><span class="seg" role="group" aria-labelledby="fxLbl" id="fxButtons"></span></span>
       <label class="grp" id="fxSpeedRow"><span class="hint">Vitesse</span><input type="range" id="fxSpeed" min="0.25" max="3" step="0.05" value="1"><span class="num" id="fxSpeedOut">1,0×</span></label>
+      </div>
       <span class="spacer"></span>
       <span class="hint" id="goKey">Espace : GO · B : blackout</span>
     </div>
@@ -874,6 +902,11 @@ function renderScenes() {
         el("span", { class: "nm" }, s.name), mini),
       el("button", { class: "edit", type: "button", "aria-label": "Modifier " + s.name, title: "Renommer, remplacer ou supprimer", onclick: () => openSceneDlg(s) }, "⋯")));
   });
+  // garder l'ambiance en scene visible dans la bande, sans faire defiler la page
+  const on = list.querySelector(".tile.on");
+  if (on && (on.offsetLeft < list.scrollLeft || on.offsetLeft + on.offsetWidth > list.scrollLeft + list.clientWidth))
+    list.scrollLeft = on.offsetLeft - list.clientWidth / 2 + on.offsetWidth / 2;
+  stripFade();
 }
 function sceneApi(body) { return api("/api/scene", body).then(poll).catch(e => alert("Erreur : " + e.message)); }
 function recallScene(id) { sceneApi({ action: "recall", id, fade: state.fade }); }
@@ -1133,7 +1166,22 @@ function renderFx() {
   const sp = $("fxSpeed");
   if (state.effect && document.activeElement !== sp) sp.value = state.effect.speed;
   $("fxSpeedOut").textContent = (+sp.value).toFixed(1).replace(".", ",") + "×";
+  // telephone : transition et effet replies, mais leur etat reste lisible sur le bouton
+  const fade = (FADES.find(f => +f[0] === +state.fade) || [, state.fade + " s"])[1];
+  const fx = state.effect ? (FX.find(f => f[0] === state.effect.name) || [, state.effect.name])[1] : "aucun";
+  $("bandMoreTxt").textContent = `Transition : ${fade} · Effet : ${fx}`;
 }
+$("bandMore").onclick = () => {
+  const open = $("bandSub").classList.toggle("open");
+  $("bandMore").setAttribute("aria-expanded", String(open));
+};
+// bande des ambiances : fondu a droite tant qu'il en reste a voir
+function stripFade() {
+  const s = $("sceneList");
+  s.classList.toggle("more-right", s.scrollLeft + s.clientWidth < s.scrollWidth - 2);
+}
+$("sceneList").addEventListener("scroll", stripFade, { passive: true });
+window.addEventListener("resize", stripFade);
 
 /* ---------- reglages ---------- */
 function showPane(p) {

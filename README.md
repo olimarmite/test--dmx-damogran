@@ -52,6 +52,8 @@ Pensé pour quelqu'un qui n'y connaît rien en lumière : on coche des spots, pu
 - **Bande régie** (en haut, toujours visible sur ordinateur) : tout ce qui sert pendant le spectacle. « En scène » dit ce
   qui est allumé ; **GO** lance l'ambiance suivante (barre d'espace) ; « + Enregistrer l'ambiance » garde la lumière telle
   quelle ; **Lumière générale**, **Blackout**, la durée de transition et les effets sont juste à côté.
+  Sur téléphone, transition et effets sont repliés sous une ligne qui rappelle leur réglage, et les cartes
+  n'ont que le fader de luminosité (les canaux un par un restent dans le panneau des spots cochés).
 - Raccourcis : Espace = GO, 1 à 9 = ambiance, B = blackout, Échap = tout décocher (désactivables dans Réglages > Clavier).
 
 ### Les blancs et le lime
