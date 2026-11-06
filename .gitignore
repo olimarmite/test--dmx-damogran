@@ -3,3 +3,4 @@ state.json
 *.tmp
 __pycache__/
 python/
+uv/

@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.8"
+# dependencies = []
+# ///
 """Damogran - petite console web Art-Net pour spots RGB (dim + couleur).
 
 Lance un serveur web local et envoie l'Art-Net directement (sans MagicQ).
 Aucune dependance : Python 3.8+ standard uniquement.
 
-    python damogran.py            -> http://localhost:8080 (ce PC seulement)
-    python damogran.py --lan      -> accessible aussi depuis un telephone sur le meme reseau
-    python damogran.py --port 9000
+    uv run damogran.py            -> http://localhost:8080 (ce PC seulement)
+    uv run damogran.py --lan      -> accessible aussi depuis un telephone sur le meme reseau
+    uv run damogran.py --port 9000
+(ou « python damogran.py » avec n'importe quel Python 3.8+)
 """
 import argparse
 import functools
