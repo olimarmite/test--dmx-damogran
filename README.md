@@ -42,18 +42,17 @@ Pensé pour quelqu'un qui n'y connaît rien en lumière : on coche des spots, pu
 - **Spots** : une carte par spot, avec sa vraie couleur en grand, son état en mots (« blanc chaud, 80 % ») et ses petits
   faders (luminosité, rouge, vert, bleu, lime). Les faders d'une carte ne règlent que ce spot.
   Toucher le haut de la carte le **coche** (bandeau ambre et coche) ; la barre « N spots cochés » dit toujours qui est coché.
-- **Pour les spots cochés** (panneau à droite, ou bouton « Régler ↓ » sur téléphone), dans l'ordre d'usage : couleurs
-  nommées, blancs **chaud / neutre / froid** (ou la bande de 2700 à 6500 K), luminosité ; repliés en dessous, la
-  correction « plus vert / plus rose » si la peau paraît mal et les canaux un par un pour les experts ;
-  enfin « Faire clignoter » pour repérer les spots dans la salle.
+- **Pour les spots cochés** (panneau à droite, ou bouton « Régler ↓ » sur téléphone) : 8 couleurs, 3 blancs
+  (**chaud / neutre / froid**), la luminosité. Repliés en dessous : « Affiner le blanc » (de 2700 à 6500 K, et la
+  correction si la peau paraît trop verte ou trop rose) et les canaux un par un pour les experts.
+  « Faire clignoter » repère les spots dans la salle. Un seul bouton « Tout cocher / Tout décocher ».
   Sans spot coché, le panneau est grisé et explique quoi faire.
 - **Plan de scène** : les mêmes spots, placés comme dans la salle (lointain en haut, public en bas, jardin à gauche,
   cour à droite). « Disposer les spots » : touche un spot puis sa case (ou flèches) ; la grille se règle en colonnes et rangs.
 - **Bande régie** (en haut, toujours visible sur ordinateur) : tout ce qui sert pendant le spectacle. « En scène » dit ce
   qui est allumé ; **GO** lance l'ambiance suivante (barre d'espace) ; « + Enregistrer l'ambiance » garde la lumière telle
   quelle ; **Lumière générale**, **Blackout**, la durée de transition et les effets sont juste à côté.
-  Sur téléphone, transition et effets sont repliés sous une ligne qui rappelle leur réglage, et les cartes
-  n'ont que le fader de luminosité (les canaux un par un restent dans le panneau des spots cochés).
+  Transition et effet sont deux menus déroulants. Sur téléphone, les cartes n'ont que le fader de luminosité (les canaux un par un restent dans le panneau des spots cochés).
 - Raccourcis : Espace = GO, 1 à 9 = ambiance, B = blackout, Échap = tout décocher (désactivables dans Réglages > Clavier).
 
 ### Les blancs et le lime
@@ -67,7 +66,7 @@ Les aperçus à l'écran utilisent le même modèle, à partir des valeurs réel
 ## Ambiances (mémoires)
 
 - Régler les spots, puis **+ Enregistrer l'ambiance actuelle** et donner un nom.
-- Toucher une ambiance (ou touches **1** à **9**) pour la rappeler, avec la **transition** choisie (instantanée, 2, 5 ou 10 s).
+- Toucher une ambiance (ou touches **1** à **9**) pour la rappeler, avec la **transition** choisie (aucune, 2, 5 ou 10 s).
   **GO** enchaîne sur la suivante.
 - **⋯** sur une ambiance : renommer, remplacer par la lumière actuelle, supprimer.
 - Toucher un réglage après un rappel marque l'ambiance « modifiée à la main » (et interrompt une transition en cours).

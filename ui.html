@@ -131,8 +131,7 @@
     font: 600 var(--t-md)/1 var(--legend); letter-spacing: .14em; text-transform: uppercase; }
   .blackout[aria-pressed="true"] { background: var(--red); color: #fff; }
   .band-sub { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-5); font-size: var(--t-sm); }
-  .band-opts { display: contents; }
-  .band-more { display: none; }
+  .pick-sel { min-height: 40px; padding: 0 var(--s-3); border: 0; border-radius: 6px; background: var(--surface); color: var(--ink); font: var(--t-sm)/1.2 var(--legend); cursor: pointer; }
   .band-sub .grp { display: flex; align-items: center; gap: var(--s-2); }
   .band-sub input[type=range] { width: 120px; }
 
@@ -193,7 +192,7 @@
   .tools .body { display: flex; flex-direction: column; gap: var(--s-5); }
   .group { display: flex; flex-direction: column; gap: var(--s-2); }
   .row2 { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s-2); }
-  .sws { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--s-3) var(--s-1); }
+  .sws { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s-3) var(--s-1); }
   .sw { display: flex; flex-direction: column; align-items: center; gap: 4px; background: none; border: 0; padding: 0; cursor: pointer; color: var(--ink-2); font-size: var(--t-xs); }
   .sw i { width: 44px; height: 44px; border-radius: 50%; display: block; box-shadow: inset 0 0 0 2px rgba(237,231,220,.18); }
   .sw:hover i { box-shadow: inset 0 0 0 2px var(--ink); }
@@ -203,7 +202,6 @@
   .temp { position: relative; height: 40px; border-radius: 6px; cursor: ew-resize; touch-action: none; }
   .temp .mark { position: absolute; top: -4px; bottom: -4px; width: 6px; margin-left: -3px; border-radius: 3px; background: var(--ground); box-shadow: 0 0 0 2px var(--ink); pointer-events: none; }
   .scale { display: flex; justify-content: space-between; font-size: var(--t-xs); color: var(--ink-3); }
-  .lvls { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-2); }
   details.more { border-top: 1px solid var(--line); padding-top: var(--s-3); }
   details.more + details.more { border-top: 0; padding-top: 0; }
   details.more summary { cursor: pointer; font-size: var(--t-sm); color: var(--ink-2); min-height: 40px; display: flex; align-items: center; }
@@ -311,28 +309,21 @@
     .go { width: 100%; min-height: 64px; order: 2; }
     .now { max-width: none; order: 1; }
     .cues { order: 3; flex-basis: 100%; }
-    .band-sub .grp { width: 100%; }
-    .band-sub .grp > .hint { flex: none; width: 76px; }
-    .band-sub .seg { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; }
-    .band-sub .seg button { flex: 1 0 auto; }
+    .band-sub .grp { flex: 1 1 140px; min-width: 0; }
+    .band-sub .pick-sel { flex: 1; min-width: 0; min-height: 44px; }
+    #fxSpeedRow { flex-basis: 100%; }
     .band-sub input[type=range] { flex: 1; width: auto; }
     .status .chip > span:not(.dot) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
     .status .chip { min-height: 44px; min-width: 44px; justify-content: center; }
     .status .chip.net { min-width: 0; }
     .status { flex-wrap: nowrap; gap: 0; }
     nav.views a { white-space: nowrap; }
-    #fxButtons { display: grid; grid-auto-flow: row; grid-template-columns: 1fr 1fr; }
     header { flex-wrap: nowrap; gap: var(--s-2); }
     header h1 { display: none; }                       /* l'onglet dit deja ou l'on est */
     nav.views a { padding: 0 var(--s-2); }
     .status .dot { width: 10px; height: 10px; }
-    .band-sub { gap: var(--s-2); }
-    .band-more { display: flex; width: 100%; min-height: 44px; align-items: center; justify-content: space-between; gap: var(--s-2); padding: 0 var(--s-3); border: 0; border-radius: 6px; background: var(--surface); color: var(--ink-2); font: var(--t-sm)/1.2 var(--legend); text-align: left; cursor: pointer; }
-    .band-more[aria-expanded="true"] .chev { transform: rotate(180deg); }
-    .band-opts { display: none; }
-    .band-sub.open .band-opts { display: flex; flex-direction: column; gap: var(--s-3); width: 100%; }
+    .band-sub { gap: var(--s-2) var(--s-3); }
     .band-sub > .spacer, #goKey { display: none !important; }
-    .seg button { min-height: 44px; }
     input[type=range] { height: 44px; }
     .tile .edit { width: 44px; }
     .cues > .tile.add { width: 96px; }
@@ -387,12 +378,9 @@
       <button class="blackout" id="blackout" type="button" aria-pressed="false" title="Touche B">Blackout</button>
     </div>
     <div class="band-sub" id="bandSub">
-      <button class="band-more" id="bandMore" type="button" aria-expanded="false" aria-controls="bandOpts"><span id="bandMoreTxt"></span><span aria-hidden="true" class="chev">▾</span></button>
-      <div class="band-opts" id="bandOpts">
-      <span class="grp"><span class="hint" id="fadeLbl">Transition</span><span class="seg" role="group" aria-labelledby="fadeLbl" id="fades"></span></span>
-      <span class="grp"><span class="hint" id="fxLbl">Effet</span><span class="seg" role="group" aria-labelledby="fxLbl" id="fxButtons"></span></span>
+      <label class="grp"><span class="hint">Transition</span><select class="pick-sel" id="fades"></select></label>
+      <label class="grp"><span class="hint">Effet</span><select class="pick-sel" id="fxSel"></select></label>
       <label class="grp" id="fxSpeedRow"><span class="hint">Vitesse</span><input type="range" id="fxSpeed" min="0.25" max="3" step="0.05" value="1"><span class="num" id="fxSpeedOut">1,0×</span></label>
-      </div>
       <span class="spacer"></span>
       <span class="hint" id="goKey">Espace : GO · B : blackout</span>
     </div>
@@ -407,7 +395,6 @@
         <span class="count" id="selCount" role="status"></span>
         <span class="spacer"></span>
         <button class="btn text" type="button" id="selAll">Tout cocher</button>
-        <button class="btn text" type="button" id="selNone">Tout décocher</button>
         <button class="btn primary" type="button" id="gotoTools" hidden>Régler ↓</button>
       </div>
 
@@ -460,19 +447,19 @@
           <div class="group">
             <span class="row2"><span class="label">Blanc</span><span class="hint" id="kOut"></span></span>
             <div class="quick" id="quickWhites"></div>
-            <div class="temp" id="temp" role="slider" tabindex="0" aria-label="Température du blanc, de chaud à froid" aria-valuemin="2700" aria-valuemax="6500"><span class="mark" id="tempMark"></span></div>
-            <span class="scale"><span>chaud · bougie</span><span>froid · ciel</span></span>
           </div>
           <div class="group">
             <label for="selDim" class="row2"><span class="label">Luminosité</span><span class="num" style="font-size:var(--t-lg)" id="selDimOut"></span></label>
             <input type="range" id="selDim" min="0" max="255">
-            <div class="lvls"><button class="btn" type="button" id="selOff">Éteindre</button><button class="btn" type="button" id="selHalf">Moitié</button><button class="btn" type="button" id="selFull">À fond</button></div>
           </div>
           <div>
             <details class="more" id="tintBox">
-              <summary>La peau paraît trop rose ou trop verte ?</summary>
+              <summary>Affiner le blanc</summary>
               <div class="inner">
-                <label for="tint" class="row2"><span class="label">Correction du blanc</span><span id="tintOut" class="hint" style="color:var(--ink)"></span></label>
+                <span class="label">Plus chaud ou plus froid</span>
+                <div class="temp" id="temp" role="slider" tabindex="0" aria-label="Température du blanc, de chaud à froid" aria-valuemin="2700" aria-valuemax="6500"><span class="mark" id="tempMark"></span></div>
+                <span class="scale"><span>chaud · bougie</span><span>froid · ciel</span></span>
+                <label for="tint" class="row2"><span class="label">Peau trop verte ou trop rose</span><span id="tintOut" class="hint" style="color:var(--ink)"></span></label>
                 <input type="range" id="tint" min="-100" max="100" value="0">
                 <span class="scale"><span>plus vert</span><span>plus rose</span></span>
               </div>
@@ -597,7 +584,7 @@
 <script>
 const PRESETS = [
   ["Rouge", 255, 0, 0], ["Orange", 255, 110, 0], ["Jaune", 255, 220, 0], ["Vert", 0, 255, 0], ["Turquoise", 0, 255, 200],
-  ["Bleu", 0, 60, 255], ["Bleu nuit", 30, 0, 170], ["Violet", 140, 0, 255], ["Magenta", 255, 0, 190], ["Rose", 255, 70, 130],
+  ["Bleu", 0, 60, 255], ["Violet", 140, 0, 255], ["Magenta", 255, 0, 190],
 ];
 const QUICK_WHITES = [[2700, "Chaud"], [4000, "Neutre"], [6500, "Froid"]];
 const KMIN = 2700, KMAX = 6500;
@@ -605,7 +592,7 @@ const KMIN = 2700, KMAX = 6500;
 const CHANNELS = [["r", "Rouge", "#ff3b30"], ["g", "Vert", "#34d058"], ["b", "Bleu", "#3b6bff"], ["l", "Lime", "#c6dd3c", "L"], ["w", "Blanc", "#e8e2d6", "W"], ["a", "Ambre", "#ffa31a", "A"], ["u", "UV", "#9b6bff", "U"]];
 const SHORT = { r: "R", g: "V", b: "B", l: "L", w: "W", a: "A", u: "UV" };
 const FX = [["chase", "Chase"], ["party", "C'est la fête"], ["applause", "Applaudissements"]];
-const FADES = [[0, "instantanée"], [2, "2 s"], [5, "5 s"], [10, "10 s"]];
+const FADES = [[0, "aucune"], [2, "2 s"], [5, "5 s"], [10, "10 s"]];
 const CHECK = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M2.5 7.5l3 3 6-7"/></svg>';
 
 let config = null, state = null, input = null, selected = new Set();
@@ -883,7 +870,7 @@ function renderScenes() {
   $("goBtn").disabled = !next;
   $("goLabel").textContent = next ? `suivante : ${next.name}` : "enregistre d'abord une ambiance";
   $("goKey").hidden = !pref("keys", true);
-  for (const b of $("fades").children) b.setAttribute("aria-pressed", String(+b.dataset.f === +state.fade));
+  if (document.activeElement !== $("fades")) $("fades").value = String(state.fade);
   const key = JSON.stringify([scenes.map(s => [s.id, s.name, s.fixtures]), live, next && next.id, config.fixtures.map(f => f.id)]);
   if (key === scenesKey) return;
   scenesKey = key;
@@ -912,11 +899,8 @@ function sceneApi(body) { return api("/api/scene", body).then(poll).catch(e => a
 function recallScene(id) { sceneApi({ action: "recall", id, fade: state.fade }); }
 const go = () => { if (nextScene()) sceneApi({ action: "go", after: lastScene }); };
 $("goBtn").onclick = go;
-for (const [v, label] of FADES) {
-  const b = el("button", { type: "button", "data-f": v, "aria-pressed": "false" }, label);
-  b.onclick = () => sceneApi({ action: "fade", fade: v });
-  $("fades").append(b);
-}
+for (const [v, label] of FADES) $("fades").append(el("option", { value: v }, label));
+$("fades").onchange = e => sceneApi({ action: "fade", fade: +e.target.value });
 function openSceneDlg(sc) {
   const dlg = $("sceneDlg"), btns = $("sceneDlgBtns");
   $("sceneDlgTitle").textContent = sc ? sc.name : "Nouvelle ambiance";
@@ -937,8 +921,8 @@ $("sceneNew").onclick = () => openSceneDlg(null);
 /* ---------- en-tete et selection ---------- */
 $("master").oninput = e => { state.master = +e.target.value; queue({ master: state.master }); render(); };
 $("blackout").onclick = toggleBlackout;
-$("selAll").onclick = () => { allIds().forEach(id => selected.add(id)); render(); };
-$("selNone").onclick = () => { selected.clear(); render(); };
+// un seul bouton : tout cocher, ou tout decocher des qu'un spot est coche
+$("selAll").onclick = () => { if (selected.size) selected.clear(); else allIds().forEach(id => selected.add(id)); render(); };
 const narrow = matchMedia("(max-width: 760px)");
 narrow.addEventListener("change", () => render());
 $("gotoTools").onclick = () => { $("tools").scrollIntoView({ behavior: calm ? "auto" : "smooth" }); $("selDim").focus({ preventScroll: true }); };
@@ -952,7 +936,7 @@ function renderHeader() {
     : `${n} spot${n > 1 ? "s" : ""} coché${n > 1 ? "s" : ""} : ${names.join(", ")}`;
   $("selCount").classList.toggle("has", n > 0);
   $("secTitle").textContent = view === "plan" ? "Plan de scène" : "Spots";
-  $("selNone").disabled = n === 0; $("selAll").disabled = n === config.fixtures.length;
+  $("selAll").textContent = n ? "Tout décocher" : "Tout cocher";
   $("gotoTools").hidden = n === 0 || !narrow.matches;   // sur telephone, le panneau est sous les cartes
 }
 
@@ -1123,9 +1107,6 @@ temp.addEventListener("keydown", e => {
 });
 $("tint").oninput = e => { const st = state.fixtures[sel()[0]] || {}; applyWhite(sel(), st.k || 3200, +e.target.value); };
 $("selDim").oninput = e => setDim(sel(), +e.target.value);
-$("selOff").onclick = () => setDim(sel(), 0);
-$("selHalf").onclick = () => setDim(sel(), 128);
-$("selFull").onclick = () => setDim(sel(), 255);
 $("identify").onclick = () => queue({ identify: sel() });
 function renderTools() {
   const ids = sel(), n = ids.length, names = ids.map(id => fxById(id).name);
@@ -1152,29 +1133,21 @@ function renderTools() {
 }
 
 /* ---------- effets ---------- */
-$("fxButtons").append(Object.assign(el("button", { type: "button", id: "fxStop", "aria-pressed": "true" }, "Aucun"), { onclick: () => { state.effect = null; queue({ effect: null }); render(); } }));
-for (const [id, label] of FX) {
-  const b = el("button", { type: "button", "data-fx": id, "aria-pressed": "false" }, label);
-  b.onclick = () => { state.effect = state.effect && state.effect.name === id ? null : { name: id, speed: +$("fxSpeed").value }; if (state.effect) fxPhase = 0; queue({ effect: state.effect }); render(); };
-  $("fxButtons").append(b);
-}
+$("fxSel").append(el("option", { value: "" }, "Aucun"), ...FX.map(([id, label]) => el("option", { value: id }, label)));
+$("fxSel").onchange = e => {
+  const id = e.target.value;
+  state.effect = id ? { name: id, speed: +$("fxSpeed").value } : null;
+  if (state.effect) fxPhase = 0;
+  queue({ effect: state.effect }); render();
+};
 $("fxSpeed").oninput = e => { if (state.effect) { state.effect.speed = +e.target.value; queue({ effect: state.effect }); } renderFx(); };
 function renderFx() {
-  for (const b of $("fxButtons").querySelectorAll("[data-fx]")) b.setAttribute("aria-pressed", String(!!state.effect && state.effect.name === b.dataset.fx));
-  $("fxStop").setAttribute("aria-pressed", String(!state.effect));
+  if (document.activeElement !== $("fxSel")) $("fxSel").value = state.effect ? state.effect.name : "";
   $("fxSpeedRow").hidden = !state.effect;   // la vitesse n'apparait que quand un effet tourne
   const sp = $("fxSpeed");
   if (state.effect && document.activeElement !== sp) sp.value = state.effect.speed;
   $("fxSpeedOut").textContent = (+sp.value).toFixed(1).replace(".", ",") + "×";
-  // telephone : transition et effet replies, mais leur etat reste lisible sur le bouton
-  const fade = (FADES.find(f => +f[0] === +state.fade) || [, state.fade + " s"])[1];
-  const fx = state.effect ? (FX.find(f => f[0] === state.effect.name) || [, state.effect.name])[1] : "aucun";
-  $("bandMoreTxt").textContent = `Transition : ${fade} · Effet : ${fx}`;
 }
-$("bandMore").onclick = () => {
-  const open = $("bandSub").classList.toggle("open");
-  $("bandMore").setAttribute("aria-expanded", String(open));
-};
 // bande des ambiances : fondu a droite tant qu'il en reste a voir
 function stripFade() {
   const s = $("sceneList");
