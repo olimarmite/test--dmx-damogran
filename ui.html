@@ -131,6 +131,7 @@
     font: 600 var(--t-md)/1 var(--legend); letter-spacing: .14em; text-transform: uppercase; }
   .blackout[aria-pressed="true"] { background: var(--red); color: #fff; }
   .band-sub { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-5); font-size: var(--t-sm); }
+  nav.views a.m-only { display: none; }
   .pick-sel { min-height: 40px; padding: 0 var(--s-3); border: 0; border-radius: 6px; background: var(--surface); color: var(--ink); font: var(--t-sm)/1.2 var(--legend); cursor: pointer; }
   .band-sub .grp { display: flex; align-items: center; gap: var(--s-2); }
   .band-sub input[type=range] { width: 120px; }
@@ -305,6 +306,25 @@
   }
   @media (max-width: 760px) {
     .band { position: static; }
+    nav.views a.m-only { display: inline-flex; }
+    .d-only { display: none; }
+    #settingsLink { padding-left: var(--s-2); padding-right: var(--s-2); }
+    body:not([data-view="ambiances"]) .band { display: none; }       /* telephone : la regie a sa page */
+    body[data-view="ambiances"] #main { display: none; }
+    body[data-view="ambiances"] .band { box-shadow: none; background: transparent; }
+    body[data-view="ambiances"] .go { min-height: 96px; }
+    body[data-view="ambiances"] .go b { font-size: var(--t-2xl); }
+    body[data-view="ambiances"] .cues { flex-direction: column; }
+    body[data-view="ambiances"] .cue-strip { flex-direction: column; overflow: visible; }
+    body[data-view="ambiances"] .cue-strip.more-right { -webkit-mask-image: none; mask-image: none; }
+    body[data-view="ambiances"] .tile { width: 100%; }
+    body[data-view="ambiances"] .tile .pick { min-height: 64px; flex-direction: row; align-items: center; justify-content: flex-start; gap: var(--s-3); }
+    body[data-view="ambiances"] .tile .top { width: auto; flex: none; min-width: 20px; }
+    body[data-view="ambiances"] .tile .nm { flex: 1; order: 1; font-size: var(--t-md); }
+    body[data-view="ambiances"] .tile .mini { order: 2; }
+    body[data-view="ambiances"] .tile .top { order: 3; }
+    body[data-view="ambiances"] .cues > .tile.add { width: 100%; margin: 0; }
+    body[data-view="ambiances"] .cues > .tile.add button { min-height: 56px; }
     .show { flex-wrap: wrap; }
     .go { width: 100%; min-height: 64px; order: 2; }
     .now { max-width: none; order: 1; }
@@ -343,8 +363,9 @@
 <header>
   <h1>Damogran</h1>
   <nav class="views" aria-label="Écrans">
+    <a href="#ambiances" data-view="ambiances" class="m-only">Ambiances</a>
     <a href="#spots" data-view="spots">Spots</a>
-    <a href="#plan" data-view="plan">Plan de scène</a>
+    <a href="#plan" data-view="plan">Plan<span class="d-only">&nbsp;de scène</span></a>
   </nav>
   <span class="spacer"></span>
   <div class="status">
@@ -789,10 +810,15 @@ function setStatus(kind, txt) { $("dot").className = "dot " + kind; $("statusTex
 
 /* ---------- vues ---------- */
 let view = "spots", pane = "fixtures";
+const narrow = matchMedia("(max-width: 760px)");
 function route() {
-  const [v, p] = (location.hash.slice(1) || "spots").split("/");
+  // sur telephone, les ambiances ont leur page (c'est elle qui sert pendant le spectacle) ;
+  // sur ordinateur, elles sont dans la bande regie, au-dessus des spots
+  const [v, p] = (location.hash.slice(1) || (narrow.matches ? "ambiances" : "spots")).split("/");
   const prev = view;
-  view = ["spots", "plan", "reglages"].includes(v) ? v : "spots";
+  view = ["ambiances", "spots", "plan", "reglages"].includes(v) ? v : "spots";
+  if (view === "ambiances" && !narrow.matches) view = "spots";
+  document.body.dataset.view = view;
   $("work").hidden = view === "reglages"; $("view-reglages").hidden = view !== "reglages";
   $("view-spots").hidden = view !== "spots"; $("view-plan").hidden = view !== "plan";
   for (const a of document.querySelectorAll("nav.views a")) {
@@ -923,8 +949,7 @@ $("master").oninput = e => { state.master = +e.target.value; queue({ master: sta
 $("blackout").onclick = toggleBlackout;
 // un seul bouton : tout cocher, ou tout decocher des qu'un spot est coche
 $("selAll").onclick = () => { if (selected.size) selected.clear(); else allIds().forEach(id => selected.add(id)); render(); };
-const narrow = matchMedia("(max-width: 760px)");
-narrow.addEventListener("change", () => render());
+narrow.addEventListener("change", () => route());
 $("gotoTools").onclick = () => { $("tools").scrollIntoView({ behavior: calm ? "auto" : "smooth" }); $("selDim").focus({ preventScroll: true }); };
 function renderHeader() {
   if (document.activeElement !== $("master")) $("master").value = state.master;
@@ -1406,7 +1431,7 @@ function renderChips() {
 function render() {
   if (!config || !state) return;
   renderChips(); renderHeader();
-  if (view !== "reglages") { renderScenes(); renderTools(); renderFx(); if (view === "spots") renderCards(); else renderPlan(); }
+  if (view !== "reglages") { renderScenes(); renderTools(); renderFx(); if (view === "spots") renderCards(); else if (view === "plan") renderPlan(); }
   else { renderDiscovery(); if (pane === "console") renderConsole(); }
 }
 // animation des apercus pendant un effet : au plus 3 images par seconde (pas de flash a l'ecran),
