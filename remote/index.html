@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex">
+<title>Damogran · télécommande</title>
+<style>
+  /* Page statique de la telecommande : elle ne contient pas l'interface.
+     Elle se connecte au PC de regie en P2P (WebRTC, mise en relation par le relais PeerJS),
+     recoit l'interface du PC et la fait tourner ; chaque appel /api passe par le canal de donnees.
+     Ainsi le telephone a toujours la meme version que le PC, sans jamais remettre cette page a jour. */
+  :root { --ground: #0f0e0c; --surface: #1c1a16; --ink: #ede7dc; --ink-2: #b0a696; --red: #e4483b; }
+  html, body { margin: 0; height: 100%; background: var(--ground); color: var(--ink); font: 16px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  #app { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; display: block; }
+  .msg { position: fixed; inset: 0; display: flex; flex-direction: column; justify-content: center; gap: 12px; padding: 24px; max-width: 420px; margin: 0 auto; }
+  .msg h1 { margin: 0; font-size: 14px; letter-spacing: .2em; text-transform: uppercase; color: var(--ink-2); font-weight: 600; }
+  .msg p { margin: 0; font-size: 20px; }
+  .msg small { color: var(--ink-2); font-size: 14px; }
+  .msg.err p { color: var(--red); }
+  .bar { position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 5; padding: 12px 16px; border-radius: 8px; background: var(--surface); box-shadow: 0 4px 24px #000; font-size: 14px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="msg" id="msg"><h1>Damogran</h1><p id="msgText">Connexion à la régie…</p><small id="msgSub"></small></div>
+<div class="bar" id="bar" role="status" hidden></div>
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js" integrity="sha384-x0YgkOr/3UOZP2CRDxGW9e0Q+2Qjyr3uJrm4xU32Y7ZCNAo7Cc7bjhrZMi/dwczu" crossorigin="anonymous"></script>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const show = (text, sub = "", err = false) => { $("msg").hidden = false; $("msg").classList.toggle("err", err); $("msgText").textContent = text; $("msgSub").textContent = sub; };
+
+// le QR code donne #p=<identifiant du PC>&k=<cle> ; on le garde pour pouvoir recharger la page
+let target = null;
+const h = new URLSearchParams(location.hash.slice(1));
+if (h.get("p") && h.get("k")) {
+  target = { p: h.get("p"), k: h.get("k") };
+  try { localStorage.setItem("damogran.remote", JSON.stringify(target)); } catch (e) { }
+  history.replaceState(null, "", location.pathname + location.search);   // la cle ne reste pas dans la barre d'adresse
+} else {
+  try { target = JSON.parse(localStorage.getItem("damogran.remote") || "null"); } catch (e) { }
+}
+
+let peer = null, conn = null, mounted = false, seq = 0, retryIn = 1000;
+const waiting = new Map();
+
+// ce que l'interface (dans l'iframe) appelle a la place de fetch
+window.damoRemote = {
+  fetch(url, opts = {}) {
+    return new Promise((ok, ko) => {
+      if (!conn || !conn.open || !conn.ready) return ko(new Error("hors ligne"));
+      const id = ++seq;
+      const t = setTimeout(() => { waiting.delete(id); ko(new Error("pas de réponse")); }, 8000);
+      waiting.set(id, { ok, ko, t });
+      conn.send({ t: "req", id, url: String(url), body: opts.body == null ? null : String(opts.body) });
+    });
+  },
+};
+
+function mount(html) {
+  const f = document.createElement("iframe");
+  f.id = "app"; f.title = "Damogran";
+  f.src = URL.createObjectURL(new Blob([html], { type: "text/html" }));   // meme origine : l'interface trouve damoRemote
+  document.body.append(f);
+  mounted = true; $("msg").hidden = true;
+}
+
+function lost(why) {
+  for (const [, w] of waiting) { clearTimeout(w.t); w.ko(new Error("connexion perdue")); }
+  waiting.clear();
+  if (mounted) { $("bar").hidden = false; $("bar").textContent = "Connexion à la régie perdue, reconnexion… " + (why || ""); }
+  else show("Connexion à la régie…", why || "", false);
+  setTimeout(connect, retryIn);
+  retryIn = Math.min(retryIn * 2, 15000);
+}
+
+function connect() {
+  if (!peer || peer.destroyed) return start();
+  if (peer.disconnected) { peer.reconnect(); return; }   // "open" relancera connect
+  if (!peer.open) return;
+  const c = conn = peer.connect(target.p, { reliable: true });
+  let done = false;
+  const fail = why => { if (done || conn !== c) return; done = true; try { c.close(); } catch (e) { } lost(why); };
+  const t = setTimeout(() => fail("(pas de réponse du PC)"), 15000);
+  c._fail = why => { clearTimeout(t); fail(why); };
+  c.on("open", () => c.send({ t: "hello", k: target.k }));
+  c.on("data", m => {
+    if (!m || typeof m !== "object") return;
+    if (m.t === "denied") {
+      done = true; clearTimeout(t);
+      show("Ce code n'est plus valable.", "Scanne le nouveau QR code affiché dans Damogran › Réglages › Téléphone.", true);
+      try { localStorage.removeItem("damogran.remote"); } catch (e) { }
+      return;
+    }
+    if (m.t === "welcome") {
+      clearTimeout(t); c.ready = true; retryIn = 1000; $("bar").hidden = true;
+      if (!mounted) mount(m.html);
+      return;
+    }
+    if (m.t === "res") {
+      const w = waiting.get(m.id); if (!w) return;
+      waiting.delete(m.id); clearTimeout(w.t);
+      w.ok(new Response(m.body, { status: m.status, headers: { "Content-Type": "application/json" } }));
+    }
+  });
+  c.on("close", () => { clearTimeout(t); fail(); });
+  c.on("error", () => { clearTimeout(t); fail(); });
+}
+
+function start() {
+  if (typeof Peer === "undefined") return show("Pas d'Internet sur ce téléphone ?", "Recharge la page quand le réseau revient.", true);
+  peer = new Peer(window.DAMO_PEER || {});
+  peer.on("open", () => { if (!conn || !conn.open) connect(); });
+  peer.on("disconnected", () => { if (!peer.destroyed) setTimeout(() => peer.disconnected && !peer.destroyed && peer.reconnect(), 2000); });
+  peer.on("error", e => {
+    if (e.type === "peer-unavailable") {
+      if (conn && conn._fail) conn._fail("(la régie n'est pas en ligne : Damogran est-il ouvert sur le PC, télécommande activée ?)");
+      return;
+    }
+    if (["network", "server-error", "socket-error", "socket-closed"].includes(e.type)) {
+      try { peer.destroy(); } catch (x) { }
+      peer = null; return lost("(relais injoignable)");
+    }
+  });
+}
+
+if (!target) show("Scanne le QR code de la régie.", "Il s'affiche sur le PC dans Damogran › Réglages › Téléphone.");
+else start();
+</script>
+</body>
+</html>

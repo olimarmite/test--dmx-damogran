@@ -10,8 +10,8 @@ Rien à installer : le dossier contient un Python portable officiel (`python\`, 
 1. Récupérer le dossier sur le PC et l'extraire (clic droit > *Extraire tout* : ne pas lancer depuis l'intérieur du ZIP).
 2. **Couper la sortie Art-Net de MagicQ** vers les projecteurs (ou fermer MagicQ), sinon les deux logiciels se battent.
 3. Double-cliquer sur `Lancer.bat` : une fenêtre noire s'ouvre (la laisser ouverte) et le navigateur s'ouvre sur http://localhost:8080.
-   `Lancer (telephone).bat` rend l'interface accessible depuis un téléphone sur le même réseau
-   (il peut demander une autorisation du pare-feu : si elle est refusée, rester sur le PC).
+   Pour piloter depuis un téléphone, voir « Télécommande téléphone » plus bas (QR code, marche aussi en 4G/5G).
+   `Lancer (telephone).bat` reste possible sur le même réseau (il peut demander une autorisation du pare-feu).
 
 Sur un autre système (macOS, Linux) : `python3 damogran.py`.
 
@@ -80,6 +80,27 @@ Trois effets, un à la fois, avec un réglage de vitesse : **Chase** (un spot ap
 **C'est la fête** (arc-en-ciel qui tourne) et **Applaudissements** (blanc chaud qui scintille, pour les saluts).
 Un effet remplace le plateau tant qu'il tourne ; **Stop** ou le rappel d'une mémoire y met fin.
 Master et Blackout restent actifs. Sur la console, un fader peut lancer un effet (au-delà de la moitié) ou régler la vitesse.
+
+## Télécommande téléphone (même en 4G/5G)
+
+Le téléphone pilote Damogran en direct (pair à pair, WebRTC), sans être sur le réseau de la salle et sans tunnel SSH.
+
+**Une seule fois : mettre en ligne la page télécommande.** C'est le petit fichier `remote/index.html`, une page statique
+(elle ne contient pas l'interface : le téléphone la reçoit du PC, toujours à jour).
+- Cloudflare (gratuit) : tableau de bord > *Workers & Pages* > *Create* > *Pages* > *Upload assets*, un nom de projet
+  (par ex. `damogran-salle`), glisser le dossier `remote`, *Deploy*. L'adresse est du type `https://damogran-salle.pages.dev/`.
+- Ou n'importe quel hébergement statique (Netlify Drop : glisser le dossier `remote` sur https://app.netlify.com/drop).
+
+**Au spectacle :** dans Damogran sur le PC, *Réglages > Téléphone* : coller l'adresse de la page, *Activer*, scanner le
+QR code. Le téléphone ouvre directement la page **Ambiances**. Le code reste le même d'une fois sur l'autre
+(le téléphone le garde : pas besoin de rescanner) ; *Nouveau code* déconnecte les téléphones et invalide l'ancien.
+
+À savoir :
+- le PC doit avoir Internet (en plus du réseau des projecteurs), et l'onglet Damogran doit rester ouvert dessus
+  (en arrière-plan, ça va) : c'est lui qui relaie les commandes au programme ;
+- la mise en relation passe par le relais public gratuit de PeerJS ; ensuite les commandes vont directement du
+  téléphone au PC, chiffrées. Si un réseau bloque le direct, elles passent par un relais TURN de PeerJS (toujours chiffrées) ;
+- le QR code donne la main sur la lumière : ne le montrer qu'aux gens de confiance.
 
 ## Console MagicQ / Mini Connect
 

@@ -245,6 +245,9 @@
   .subnav button { min-height: 44px; text-align: left; padding: 0 var(--s-3); border-radius: 6px; background: transparent; border: 0; color: var(--ink-2); cursor: pointer; font-size: var(--t-md); box-shadow: inset 2px 0 0 transparent; }
   .subnav button[aria-current="true"] { background: var(--surface); color: var(--ink); box-shadow: inset 2px 0 0 var(--ink); }
   .pane { min-width: 0; display: flex; flex-direction: column; gap: var(--s-5); }
+  .qr { align-self: flex-start; background: #fff; border-radius: 8px; padding: var(--s-2); line-height: 0; }
+  .qr svg { display: block; max-width: min(300px, 70vw); height: auto; }
+  #rcLink { color: var(--ink); word-break: break-all; }
   .pane h3 { margin: 0; font: 600 var(--t-2xl)/1.1 var(--legend); letter-spacing: .01em; }
   .card-box { background: var(--surface); border-radius: var(--r-card); padding: var(--s-4) var(--s-5); display: flex; flex-direction: column; gap: var(--s-3); }
   .help { font-size: var(--t-sm); color: var(--ink-2); margin: 0; max-width: 75ch; line-height: 1.5; }
@@ -371,6 +374,7 @@
   <div class="status">
     <span class="chip net" role="status"><span class="dot" id="dot"></span><span id="statusText">connexion…</span></span>
     <a class="chip" href="#reglages/console"><span class="dot" id="consoleDot"></span><span id="consoleText">Console</span></a>
+    <a class="chip" href="#reglages/phone" id="rcChip" hidden><span class="dot ok"></span><span id="rcChipText">Téléphone</span></a>
   </div>
   <a class="btn text" href="#reglages" id="settingsLink">Réglages</a>
 </header>
@@ -401,7 +405,7 @@
     <div class="band-sub" id="bandSub">
       <label class="grp"><span class="hint">Transition</span><select class="pick-sel" id="fades"></select></label>
       <label class="grp"><span class="hint">Effet</span><select class="pick-sel" id="fxSel"></select></label>
-      <label class="grp" id="fxSpeedRow"><span class="hint">Vitesse</span><input type="range" id="fxSpeed" min="0.25" max="3" step="0.05" value="1"><span class="num" id="fxSpeedOut">1,0×</span></label>
+      <label class="grp" id="fxSpeedRow" hidden><span class="hint">Vitesse</span><input type="range" id="fxSpeed" min="0.25" max="3" step="0.05" value="1"><span class="num" id="fxSpeedOut">1,0×</span></label>
       <span class="spacer"></span>
       <span class="hint" id="goKey">Espace : GO · B : blackout</span>
     </div>
@@ -503,6 +507,7 @@
         <button type="button" data-pane="fixtures">Projecteurs</button>
         <button type="button" data-pane="console">Console &amp; MIDI</button>
         <button type="button" data-pane="network">Réseau Art-Net</button>
+        <button type="button" data-pane="phone">Téléphone</button>
         <button type="button" data-pane="keys">Clavier</button>
         <a class="btn quiet" href="#spots" style="margin-top:12px">← Retour aux spots</a>
       </nav>
@@ -582,6 +587,21 @@
             <button class="btn" id="rawStop" type="button">Arrêter</button>
           </div>
           <p class="help">Pour trouver un projecteur à l'aveugle. S'ajoute par-dessus le reste, s'arrête quand on quitte les réglages.</p>
+        </div>
+      </div>
+
+      <div class="pane" data-pane="phone" hidden>
+        <h3>Télécommande téléphone</h3>
+        <p class="help" id="rcOnPhone" hidden>Tu es sur la télécommande : elle s'active et se règle sur le PC de régie.</p>
+        <p class="help" id="rcNotHere" hidden>La télécommande s'active depuis le PC de régie, dans Damogran ouvert à l'adresse <code>127.0.0.1</code>.</p>
+        <div id="rcBox" style="display:flex;flex-direction:column;gap:var(--s-4)">
+          <p class="help" style="margin:0">Pilote depuis ton téléphone, même en 4G/5G : active, puis scanne le code. Ce PC doit avoir Internet, et cette page doit rester ouverte (en arrière-plan, ça va).</p>
+          <div class="form"><label>Adresse de la page télécommande <input type="url" id="rcPage" placeholder="https://damogran.pages.dev/" spellcheck="false"></label></div>
+          <div class="row"><button class="btn primary" id="rcToggle" type="button">Activer</button><button class="btn" id="rcNew" type="button" hidden>Nouveau code</button></div>
+          <p class="help" role="status" id="rcStatus" style="margin:0;color:var(--ink)"></p>
+          <div class="qr" id="rcQr" hidden></div>
+          <p class="help" id="rcLinkRow" hidden style="margin:0">Ou ouvre ce lien sur le téléphone : <a id="rcLink" target="_blank" rel="noopener"></a></p>
+          <p class="help" style="margin:0">Le code donne la main sur la lumière : ne le montre qu'aux gens de confiance. « Nouveau code » déconnecte les téléphones et rend l'ancien inutilisable.</p>
         </div>
       </div>
 
@@ -762,8 +782,10 @@ const shown = (fx, i) => {   // valeurs a montrer : l'effet en cours s'il y en a
 };
 
 /* ---------- reseau ---------- */
+// sur la telecommande, chaque appel passe par le canal P2P ouvert par la page qui nous heberge
+const REMOTE = (() => { try { return (window.parent !== window && window.parent.damoRemote) || null; } catch (e) { return null; } })();
 async function api(path, body) {
-  const r = await fetch(path, body === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const r = await (REMOTE ? REMOTE.fetch : fetch)(path, body === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   const j = await r.json();
   if (!r.ok) throw new Error(j.error || r.status);
   return j;
@@ -803,7 +825,8 @@ async function poll() {
     if (snap.error) setStatus("err", snap.error);
     else setStatus(snap.packets !== lastPackets ? "ok" : "err", `Art-Net vers ${config.target_ip}`);
     lastPackets = snap.packets;
-  } catch (e) { setStatus("err", "Damogran ne répond pas : la fenêtre noire est-elle ouverte ?"); }
+    rcSync();
+  } catch (e) { setStatus("err", REMOTE ? "La régie ne répond pas (connexion perdue ?)" : "Damogran ne répond pas : la fenêtre noire est-elle ouverte ?"); }
   pollTimer = setTimeout(poll, fast ? 150 : 1000);   // plus rapide pendant un fondu ou en reglage console
 }
 function setStatus(kind, txt) { $("dot").className = "dot " + kind; $("statusText").textContent = txt; }
@@ -1181,9 +1204,135 @@ function stripFade() {
 $("sceneList").addEventListener("scroll", stripFade, { passive: true });
 window.addEventListener("resize", stripFade);
 
+/* ---------- telecommande telephone (P2P) ----------
+   Le PC de regie (cette page, ouverte en local) s'inscrit sur le relais PeerJS et attend les telephones.
+   Le telephone ouvre la page statique (remote/index.html), s'y connecte en WebRTC, envoie la cle du QR code,
+   recoit cette interface et la fait tourner : chaque appel /api passe ensuite par le canal de donnees.
+   Le relais ne sert qu'a la mise en relation ; la lumiere passe en direct (ou par un TURN si le reseau bloque). */
+const CDN = {
+  peer: ["https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js", "sha384-x0YgkOr/3UOZP2CRDxGW9e0Q+2Qjyr3uJrm4xU32Y7ZCNAo7Cc7bjhrZMi/dwczu"],
+  qr: ["https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js", "sha384-8FWZA6BGMXhsfO+BLtrJK0We6gg5o1JyO8xQm6peWDEUs17ACA5ziE/NIAkl9z2k"],
+};
+const scripts = {};
+function loadScript([src, integrity]) {
+  return scripts[src] = scripts[src] || new Promise((ok, ko) => {
+    const s = el("script", { src, integrity, crossorigin: "anonymous" });
+    s.onload = ok; s.onerror = () => { delete scripts[src]; s.remove(); ko(new Error("pas d'Internet")); };
+    document.head.append(s);
+  });
+}
+const RC_API = new Set(["/api/state", "/api/config", "/api/input", "/api/layout", "/api/midi", "/api/scene", "/api/discover"]);
+const rcHost = !REMOTE && ["127.0.0.1", "localhost", "[::1]"].includes(location.hostname);
+const rc = { id: "", peer: null, conns: new Set(), status: "", err: false, retry: null, qrUrl: null };
+const rcCfg = () => (config && config.remote) || {};
+const rnd = n => Array.from(crypto.getRandomValues(new Uint8Array(n)), b => "abcdefghijkmnpqrstuvwxyz23456789"[b % 32]).join("");
+const rcSet = (txt, err = false) => { rc.status = txt; rc.err = err; renderPhone(); };
+function rcSync() {
+  const r = rcCfg(), want = rcHost && r.on && r.id && r.key ? r.id : "";
+  if (want !== rc.id) { rcStop(); if (want) rcStart(want); }
+  renderPhone();
+}
+function rcStop() {
+  clearTimeout(rc.retry);
+  for (const c of rc.conns) try { c.close(); } catch (e) { }
+  rc.conns.clear();
+  if (rc.peer) try { rc.peer.destroy(); } catch (e) { }
+  rc.peer = null; rc.id = ""; rc.status = ""; rc.err = false;
+}
+function rcRetry() {
+  const id = rc.id; clearTimeout(rc.retry);
+  rc.retry = setTimeout(() => { if (rc.id === id) { rcStop(); rcStart(id); } }, 15000);
+}
+async function rcStart(id) {
+  rc.id = id; rcSet("Connexion au relais…");
+  try { await loadScript(CDN.peer); }
+  catch (e) { if (rc.id === id) { rcSet("Ce PC n'a pas Internet : la télécommande ne peut pas démarrer. Nouvel essai dans 15 s.", true); rcRetry(); } return; }
+  if (rc.id !== id) return;
+  const peer = rc.peer = new Peer(id, window.DAMO_PEER || {});
+  peer.on("open", () => { if (rc.peer === peer) rcSet("Prête : scanne le code avec le téléphone."); });
+  peer.on("connection", c => rcAccept(c));
+  peer.on("disconnected", () => {
+    if (rc.peer !== peer || peer.destroyed) return;
+    rcSet("Relais perdu, reconnexion…", true);
+    setTimeout(() => { if (rc.peer === peer && !peer.destroyed && peer.disconnected) peer.reconnect(); }, 3000);
+  });
+  peer.on("error", e => {
+    if (rc.peer !== peer || e.type === "peer-unavailable") return;
+    rcSet(e.type === "unavailable-id" ? "Déjà active dans un autre onglet (ou sur un autre PC). Nouvel essai dans 15 s." : `Relais injoignable (${e.type}). Nouvel essai dans 15 s.`, true);
+    rcRetry();
+  });
+}
+function rcAccept(c) {
+  let ok = false;
+  const kick = setTimeout(() => { if (!ok) c.close(); }, 10000);
+  const drop = () => { rc.conns.delete(c); renderPhone(); };
+  c.on("close", drop); c.on("error", drop);
+  c.on("data", async m => {
+    if (!m || typeof m !== "object") return;
+    if (!ok) {
+      if (m.t !== "hello" || !rcCfg().key || m.k !== rcCfg().key) { c.send({ t: "denied" }); setTimeout(() => c.close(), 500); return; }
+      ok = true; clearTimeout(kick); rc.conns.add(c); renderPhone();
+      c.send({ t: "welcome", html: await (await fetch("/")).text() });   // le telephone fait tourner cette meme interface
+      return;
+    }
+    if (m.t !== "req") return;
+    let res;
+    try {
+      if (!RC_API.has(m.url)) throw new Error("adresse refusée");
+      const r = await fetch(m.url, m.body == null ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: String(m.body) });
+      res = { t: "res", id: m.id, status: r.status, body: await r.text() };
+    } catch (e) { res = { t: "res", id: m.id, status: 502, body: JSON.stringify({ error: e.message }) }; }
+    if (c.open) c.send(res);
+  });
+}
+// enregistrements a la file : chacun part de la config deja a jour (sinon « adresse » puis « Activer » se marchent dessus)
+let rcQueue = Promise.resolve();
+function rcSave(patch) {
+  return rcQueue = rcQueue.then(async () => {
+    const r = Object.assign({ on: false, id: "", key: "", page: "" }, rcCfg(), patch);
+    try { await api("/api/config", Object.assign({}, config, { remote: r })); await poll(); }
+    catch (e) { rcSet("Erreur : " + e.message, true); }
+  });
+}
+const rcPageUrl = () => $("rcPage").value.trim();
+$("rcPage").onchange = () => { if (rcPageUrl() !== (rcCfg().page || "")) rcSave({ page: rcPageUrl() }); };
+$("rcToggle").onclick = () => {
+  const r = rcCfg();
+  if (r.on) return rcSave({ on: false });
+  if (!/^https?:\/\/\S+$/.test(rcPageUrl())) { $("rcPage").focus(); return rcSet("Indique d'abord l'adresse de la page télécommande (voir le README).", true); }
+  rcSave({ on: true, page: rcPageUrl(), id: r.id || "damogran-" + rnd(20), key: r.key || rnd(24) });
+};
+$("rcNew").onclick = () => {
+  if (confirm("Les téléphones connectés seront déconnectés et l'ancien code ne marchera plus. Continuer ?"))
+    rcSave({ id: "damogran-" + rnd(20), key: rnd(24) });
+};
+function renderPhone() {
+  const r = rcCfg(), n = rc.conns.size;
+  $("rcOnPhone").hidden = !REMOTE; $("rcNotHere").hidden = !!REMOTE || rcHost; $("rcBox").hidden = !rcHost;
+  $("rcChip").hidden = !n;
+  $("rcChipText").textContent = n > 1 ? `${n} téléphones` : "Téléphone";
+  if (!rcHost) return;
+  if (document.activeElement !== $("rcPage")) $("rcPage").value = r.page || "";
+  $("rcToggle").textContent = r.on ? "Désactiver" : "Activer";
+  $("rcNew").hidden = !r.on;
+  const url = r.on && r.page && r.id ? r.page.replace(/#.*$/, "") + "#p=" + r.id + "&k=" + r.key : "";
+  $("rcStatus").textContent = !r.on ? (rc.err ? rc.status : "Désactivée.") : rc.status + (n ? ` · ${n} téléphone${n > 1 ? "s" : ""} connecté${n > 1 ? "s" : ""}` : "");
+  $("rcStatus").style.color = rc.err ? "var(--red)" : "var(--ink)";
+  $("rcLinkRow").hidden = $("rcQr").hidden = !url;
+  $("rcLink").href = url; $("rcLink").textContent = url;
+  if (url !== rc.qrUrl) {
+    rc.qrUrl = url; $("rcQr").innerHTML = "";
+    if (url) loadScript(CDN.qr).then(() => {
+      if (rc.qrUrl !== url) return;
+      const q = qrcode(0, "M"); q.addData(url); q.make();
+      $("rcQr").innerHTML = q.createSvgTag({ cellSize: 6, margin: 2, alt: "QR code de la télécommande" });
+    }).catch(() => { rc.qrUrl = null; });
+  }
+}
+
 /* ---------- reglages ---------- */
 function showPane(p) {
-  pane = ["fixtures", "console", "network", "keys"].includes(p) ? p : "fixtures";
+  pane = ["fixtures", "console", "network", "phone", "keys"].includes(p) ? p : "fixtures";
   for (const b of $("subnav").querySelectorAll("button")) b.setAttribute("aria-current", String(b.dataset.pane === pane));
   for (const d of document.querySelectorAll(".pane")) d.hidden = d.dataset.pane !== pane;
   if (pane === "console") { stripsKey = ""; renderConsole(); }
@@ -1431,7 +1580,8 @@ function renderChips() {
 function render() {
   if (!config || !state) return;
   renderChips(); renderHeader();
-  if (view !== "reglages") { renderScenes(); renderTools(); renderFx(); if (view === "spots") renderCards(); else if (view === "plan") renderPlan(); }
+  renderScenes(); renderFx();   // la bande regie reste juste, meme dans les reglages
+  if (view !== "reglages") { renderTools(); if (view === "spots") renderCards(); else if (view === "plan") renderPlan(); }
   else { renderDiscovery(); if (pane === "console") renderConsole(); }
 }
 // animation des apercus pendant un effet : au plus 3 images par seconde (pas de flash a l'ecran),

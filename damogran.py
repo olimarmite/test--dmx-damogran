@@ -14,6 +14,7 @@ import json
 import math
 import os
 import random
+import re
 import select
 import socket
 import struct
@@ -984,10 +985,22 @@ class Engine:
                 "fixtures": fixtures,
                 "input": self.config.get("input") or default_input(fixtures),
                 "grid": self.config.get("grid") or {"cols": 12, "rows": 7},
+                "remote": clean_remote(cfg["remote"]) if "remote" in cfg else self.config.get("remote"),
             }
             self.sock_key = None
             save_json(CONFIG_PATH, self.config)
         self.wake.set()
+
+
+def clean_remote(r):
+    """Telecommande telephone : identifiant du PC sur le relais PeerJS, cle du QR code, adresse de la page."""
+    if not isinstance(r, dict):
+        return None
+    tok = lambda v: re.sub(r"[^A-Za-z0-9_-]", "", str(v or ""))[:64]
+    page = str(r.get("page") or "").strip()[:300]
+    if not re.match(r"^https?://[^\s\"'<>]+$", page):
+        page = ""
+    return {"on": bool(r.get("on")), "id": tok(r.get("id")), "key": tok(r.get("key")), "page": page}
 
 
 ENGINE = None
