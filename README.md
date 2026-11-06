@@ -5,13 +5,15 @@ Un seul fichier Python, sans dépendance.
 
 ## Démarrage (Windows, sans droits admin)
 
-Rien à installer : le dossier contient un Python portable officiel (`python\`, Python 3.12 « embeddable » de python.org).
+Rien à installer.
 
 1. Récupérer le dossier sur le PC et l'extraire (clic droit > *Extraire tout* : ne pas lancer depuis l'intérieur du ZIP).
 2. **Couper la sortie Art-Net de MagicQ** vers les projecteurs (ou fermer MagicQ), sinon les deux logiciels se battent.
 3. Double-cliquer sur `Lancer.bat` : une fenêtre noire s'ouvre (la laisser ouverte) et le navigateur s'ouvre sur http://localhost:8080.
-   Pour piloter depuis un téléphone, voir « Télécommande téléphone » plus bas (QR code, marche aussi en 4G/5G).
-   `Lancer (telephone).bat` reste possible sur le même réseau (il peut demander une autorisation du pare-feu).
+   S'il n'y a pas de Python sur le PC, le premier lancement télécharge le Python portable officiel
+   (python.org, 11 Mo, vérifié) dans un dossier `python\` à côté : aucune installation, aucun droit admin.
+   Pour un PC sans Internet, copier ce dossier `python\` depuis un autre PC (ou prendre un ZIP qui l'inclut déjà).
+   Pour piloter depuis un téléphone, voir « Télécommande téléphone » plus bas.
 
 Sur un autre système (macOS, Linux) : `python3 damogran.py`.
 
