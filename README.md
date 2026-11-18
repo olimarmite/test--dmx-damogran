@@ -15,7 +15,8 @@ Rien à installer.
    Pour un PC sans Internet : prendre un ZIP qui contient déjà un dossier `python\` (Python portable), le lanceur s'en sert.
    Pour piloter depuis un téléphone, voir « Télécommande téléphone » plus bas.
 
-Sur un autre système (macOS, Linux) : `uv run damogran.py` (ou `python3 damogran.py`).
+**Linux (et macOS)** : `./Lancer.sh` (utilise uv s'il est installé, sinon `python3` 3.8+). Rien d'autre à installer.
+Sous Linux, le port Art-Net 6454 n'a pas besoin de droits admin ; si un pare-feu est actif, autoriser l'UDP 6454 et le port web (8080).
 
 ## Découverte automatique
 
